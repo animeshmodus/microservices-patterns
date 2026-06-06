@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Defining a microservice architecture by business capability and by DDD subdomain.">
+  <title>Decomposition Strategies · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html" class="active"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Chapters</div>
+    <nav class="nav">
+      <a href="ch01.html"><span class="nidx">01</span><span>Escaping Monolithic Hell</span></a>
+      <a href="ch02.html" class="active"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="ch03.html"><span class="nidx">03</span><span>Interprocess Communication</span></a>
+      <a href="ch04.html"><span class="nidx">04</span><span>Managing Transactions with Sagas</span></a>
+      <a href="ch05.html"><span class="nidx">05</span><span>Designing Business Logic</span></a>
+      <a href="ch06.html"><span class="nidx">06</span><span>Developing Business Logic with Event Sourcing</span></a>
+      <a href="ch07.html"><span class="nidx">07</span><span>Implementing Queries</span></a>
+      <a href="ch08.html"><span class="nidx">08</span><span>External API Patterns</span></a>
+      <a href="ch09.html"><span class="nidx">09</span><span>Testing Microservices (Parts 1 &amp; 2)</span></a>
+      <a href="ch11.html"><span class="nidx">11</span><span>Developing Production-Ready Services</span></a>
+      <a href="ch12.html"><span class="nidx">12</span><span>Deploying Microservices</span></a>
+      <a href="ch13.html"><span class="nidx">13</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Chapter</a><span class="sep">/</span>Decomposition Strategies</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--ch">Chapter 2</span> <span class="badge">2 lessons</span> <span class="badge badge--diff">2 patterns</span></div>
+      <h1>Chapter 2 · Decomposition Strategies</h1>
+      <p class="page-sub">Defining a microservice architecture by business capability and by DDD subdomain.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-decompose-by-business-capability"><h2 class="unit-title">Decompose by Business Capability</h2><div class="tags"><span class="badge badge--pat">Decompose by business capability</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Define services around <em>what the business does</em> — its
+  capabilities (Order Management, Delivery, Billing) — because capabilities are stable even as the <em>how</em> changes,
+  so service boundaries drawn this way rarely need to move.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>You're defining a service decomposition <strong>top-down</strong> from the business.</li>
+      <li>You want boundaries that map cleanly to <strong>team ownership</strong>.</li>
+      <li>The organisation already thinks in capabilities / value streams.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You're tempted to make a service per <strong>database table</strong> or technical layer.</li>
+      <li>Capabilities are defined by IT, not by <strong>business experts</strong>.</li>
+      <li>You haven't aligned team structure (Conway's Law will fight you).</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: where do the boundaries go?</h3>
+<p>You've decided to build microservices. But <em>how many</em> and <em>which</em>? Decompose badly and you get a
+<a href="../by-pattern/monolith-vs-microservices.html">distributed monolith</a> or a swarm of chatty nano-services. You need a principled
+way to draw lines — and it must produce <strong>stable</strong> boundaries, because moving a boundary later (splitting a
+database, re-homing logic) is expensive.</p>
+
+<h3>The pattern: services mirror business capabilities</h3>
+<p>A <strong>business capability</strong> is something an organisation does to generate value — independent of <em>how</em>
+it's currently implemented. FTGO's capabilities include <em>Order Management</em>, <em>Restaurant/Menu Management</em>,
+<em>Delivery Management</em>, <em>Accounting</em>. You identify the capabilities (often hierarchically), then define one
+service per capability (or per leaf sub-capability).</p>
+
+<figure class="arch">
+  <figcaption>Architecture — FTGO services, one per business capability</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Capability map</span><span class="node-name">FTGO</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Order Management</span></div>
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Restaurant Mgmt</span></div>
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Delivery Mgmt</span></div>
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Accounting</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<p>Because capabilities reflect <em>what</em> the business is, not <em>how</em> it works today, they're stable. The
+implementation behind "Delivery Management" can change radically; the capability — and therefore the service boundary —
+stays put.</p>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">Capability, not function or entity</div>
+<p>Decompose around a capability (<em>Order Management</em>), not a verb (<em>OrderController</em>) or a table
+(<em>an Address service</em>). Capability boundaries are cohesive and coarse enough to avoid the chatty, brittle
+nano-services you get from one-service-per-entity.</p>
+</div></div>
+
+<h3>How it works</h3>
+<ol>
+  <li><strong>Identify capabilities</strong> from the business — analyse what the organisation does, its value streams,
+  and the structure of the business. Workshops like <em>Event Storming</em> help.</li>
+  <li><strong>Decompose hierarchically</strong> if needed — e.g. <em>Customer Management</em> → Identity, Profile,
+  Preferences — but only split when scaling or team needs justify it.</li>
+  <li><strong>Map each (sub)capability to a service</strong> that owns its data and exposes an API.</li>
+  <li><strong>Align teams to capabilities</strong> — apply the <em>Inverse Conway Maneuver</em>: shape teams to match
+  the architecture you want.</li>
+</ol>
+
+<figure class="diagram">
+<figcaption>Flow — from business analysis to capability-aligned services &amp; teams</figcaption>
+<pre class="mermaid">
+flowchart LR
+  A[Analyse the business] --> B[Identify capabilities]
+  B --> C[Decompose into<br/>sub-capabilities]
+  C --> D[One service per<br/>leaf capability]
+  D --> E[One team owns<br/>each service]
+  E -. Conway's Law .-> D
+</pre>
+</figure>
+
+<h3>Worked use cases</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Banking</span>
+<h4>A retail bank's capability map</h4>
+<p>Top-level capabilities: <em>Account Management, Lending, Payments, Fraud Detection, Customer Onboarding</em>.
+<em>Payments</em> decomposes into Domestic Transfers, International Wire, Card Processing. A new "Buy Now Pay Later"
+product is then composed from <em>Lending</em> + <em>Payments</em> without touching Account Management — capability
+reuse in action.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce</span>
+<h4>Scaling only what's hot on Black Friday</h4>
+<p>Capabilities: Catalog, Inventory, Pricing &amp; Promotions, Cart, Checkout, Fulfilment, Returns, Loyalty. The
+Black-Friday load hits Catalog and Pricing hardest — and because they're separate capability-services, they scale
+(scale-cube X-axis) independently of Fulfilment.</p>
+</div>
+
+<h3>In the wild — tooling &amp; practice</h3>
+<ul>
+  <li><strong>Team Topologies</strong> — its "stream-aligned team" maps directly onto a business capability owner; the
+  most-cited modern framework for organising around services.</li>
+  <li><strong>Event Storming</strong> (Alberto Brandolini) — a collaborative workshop to discover capabilities and their
+  boundaries before any code.</li>
+  <li><strong>Backstage</strong> (Spotify/CNCF) — an internal developer portal that catalogues which team owns which
+  capability/service, essential once you have dozens.</li>
+  <li><strong>Amazon &amp; Spotify</strong> — capability-aligned ownership ("you build it, you run it"; squads aligned to
+  Playlists, Discovery, Payments) are the textbook examples.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Granularity mismatch</strong> — one service per CRUD entity instead of per capability → nano-services.</li>
+<li><strong>Shared database across "services"</strong> — kills independent deployability; it's a distributed monolith.</li>
+<li><strong>Ignoring Conway's Law</strong> — defining ideal services but keeping teams organised by tech layer; the org
+will reshape the architecture back.</li>
+<li><strong>Capabilities defined by IT</strong> rather than business experts — boundaries end up mirroring old silos.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Draw service boundaries around <strong>business capabilities</strong> — stable because they describe <em>what</em>, not <em>how</em>.</li>
+<li>Capability ≠ function ≠ entity; aim for cohesive, coarse-grained services.</li>
+<li>Each capability-service <strong>owns its data</strong> and is owned by <strong>one team</strong>.</li>
+<li>Pair with <a href="#sec-decompose-by-subdomain">Decompose by subdomain</a> — they usually agree and reinforce each other.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is "Order Management" a better service boundary than "OrderValidationService", "OrderPricingService" and
+"OrderPersistenceService"?</p>
+<details><summary>Show answer</summary>
+<p>The three technical services split <em>one</em> cohesive capability across the network: a single "place order"
+operation now needs multiple synchronous hops, shares order data awkwardly, and changes ripple across all three. "Order
+Management" keeps the cohesive logic and its data together, is independently deployable, and maps to one owning team.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-decompose-by-subdomain">Decompose by subdomain</a> ·
+<a href="../by-pattern/monolith-vs-microservices.html">Microservice architecture</a> · <a href="../by-pattern/business-logic.html">Domain model &amp; aggregate</a></p>
+</section>
+<section class="unit" id="sec-decompose-by-subdomain"><h2 class="unit-title">Decompose by Subdomain (DDD)</h2><div class="tags"><span class="badge badge--pat">Decompose by subdomain</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Use Domain-Driven Design to break the problem into
+  <em>subdomains</em>, each with its own <em>bounded context</em> and consistent model — then make each bounded context a
+  service. The boundary between two services is the place where the language of the business changes meaning.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>The domain is <strong>rich and complex</strong> (the same word means different things to different teams).</li>
+      <li>You're already practising (or want) <strong>Domain-Driven Design</strong>.</li>
+      <li>You need to decide <strong>build vs buy</strong> per area (core vs generic).</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You treat a single entity/table as a "bounded context".</li>
+      <li>You try to design the <strong>whole model up front</strong> instead of discovering it.</li>
+      <li>You let a <strong>shared kernel</strong> grow until contexts re-couple.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: one "Order" means five different things</h3>
+<p>In FTGO, the word <em>Order</em> means something different to Order-taking, to the Kitchen, to Delivery and to
+Accounting. A single, shared "Order" class trying to satisfy everyone becomes a fuzzy, over-coupled mess. DDD gives us a
+vocabulary for turning these linguistic seams into service boundaries.</p>
+
+<h3>The pattern: subdomains &amp; bounded contexts</h3>
+<p>Domain-Driven Design decomposes the <strong>domain</strong> (the whole problem space) into <strong>subdomains</strong>.
+Each subdomain has a <strong>bounded context</strong> — a boundary within which a single model and a single
+<em>ubiquitous language</em> are consistent. <strong>One bounded context = one service</strong> is the default.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — bounded contexts become services; "Order" differs in each</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Domain</span><span class="node-name">Food delivery</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Order Taking</span><span class="node-sub">Order = line items &amp; total</span></div>
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Kitchen</span><span class="node-sub">Order = a Ticket to cook</span></div>
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Delivery</span><span class="node-sub">Order = a pickup &amp; drop-off</span></div>
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Accounting</span><span class="node-sub">Order = a charge</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h3>Classify subdomains: core, supporting, generic</h3>
+<p>Not all subdomains deserve equal investment. DDD classifies them — and that drives build-vs-buy and where your best
+engineers go:</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Type</th><th>What it is</th><th>Strategy</th><th>FTGO example</th></tr></thead>
+<tbody>
+<tr><td><strong>Core</strong></td><td>Your competitive differentiator</td><td>Invest heavily, build in-house, best people</td><td>Delivery scheduling / routing</td></tr>
+<tr><td><strong>Supporting</strong></td><td>Necessary but not differentiating</td><td>Build simply, or outsource</td><td>Restaurant menu management</td></tr>
+<tr><td><strong>Generic</strong></td><td>A solved commodity</td><td>Buy / use OSS, wrap with an ACL</td><td>Payments (Stripe), identity, email</td></tr>
+</tbody>
+</table></div>
+
+<h3>How it works: context mapping</h3>
+<p>Once you have bounded contexts, you classify the <em>relationships</em> between them (a <strong>context map</strong>).
+The relationship dictates the integration style and which team depends on which.</p>
+<figure class="diagram">
+<figcaption>Context map — relationships between bounded contexts</figcaption>
+<pre class="mermaid">
+flowchart LR
+  OT[Order Taking]
+  KI[Kitchen]
+  DL[Delivery]
+  PAY[Payments<br/>generic, external]
+  OT -- "publishes events" --> KI
+  OT -- "publishes events" --> DL
+  OT -- "Anti-Corruption Layer" --> PAY
+  classDef ext fill:#1f2937,stroke:#94a3b8,color:#fff;
+  class PAY ext;
+</pre>
+</figure>
+<p>Relationships include <em>Partnership</em>, <em>Customer–Supplier</em>, <em>Conformist</em>, <em>Shared Kernel</em>,
+<em>Open Host Service / Published Language</em>, and the <a href="../by-pattern/anti-corruption-layer.html">Anti-Corruption Layer</a>
+(used whenever you integrate a legacy or generic system without letting its model leak in).</p>
+
+<h3>Worked use cases</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Banking</span>
+<h4>Loan origination — same word, two models</h4>
+<p>Core: <em>Credit Decisioning</em> (proprietary risk models) with a rich domain model (<code>CreditApplication</code>
+aggregate, <code>RiskScore</code> value object). Generic: <em>Identity Verification</em> — a thin
+<a href="../by-pattern/anti-corruption-layer.html">ACL</a> over a vendor (e.g. Jumio). This classification tells you to staff Credit
+Decisioning with senior engineers and merely <em>integrate</em> identity.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · Ride-hailing</span>
+<h4>"Driver" is two different things</h4>
+<p>In the <em>Matching</em> context a Driver is a lightweight struct (location + availability). In the <em>Driver
+Management</em> context a Driver is a rich aggregate (profile, documents, earnings, compliance). Same word, two models in
+two bounded contexts, connected via a Customer–Supplier relationship with an ACL — exactly the seam DDD predicts.</p>
+</div>
+
+<h3>In the wild — tooling &amp; practice</h3>
+<ul>
+  <li><strong>Event Storming</strong> &amp; <strong>Domain Storytelling</strong> — workshops to discover subdomains,
+  events and aggregates collaboratively.</li>
+  <li><strong>Context Mapper</strong> — an open-source DSL for modelling bounded contexts and their relationships
+  (generates diagrams &amp; service stubs).</li>
+  <li><strong>Microsoft eShopOnContainers</strong> — a canonical reference app where each service maps to a DDD bounded
+  context (Catalog, Ordering, Basket, Identity, Payment).</li>
+  <li><strong>Spring Modulith</strong> (2023+) — enforces bounded-context boundaries inside a modular monolith and can
+  generate context maps from code; a great stepping stone before extracting services.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Bounded context = one table.</strong> A real context encapsulates a business <em>process</em>, not a data structure.</li>
+<li><strong>Anemic model.</strong> Using DDD vocabulary but writing transaction-script logic — overhead without benefit.</li>
+<li><strong>Shared-kernel sprawl.</strong> Too many shared types re-couple the contexts you split.</li>
+<li><strong>Big design up front.</strong> Discover the model iteratively from working code + events, don't pre-design it.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Decompose the domain into <strong>subdomains</strong>; each <strong>bounded context</strong> → one service.</li>
+<li>The service boundary is where the <strong>ubiquitous language changes meaning</strong>.</li>
+<li>Classify subdomains <strong>core / supporting / generic</strong> to direct investment and build-vs-buy.</li>
+<li>Make context relationships explicit; protect contexts with an <a href="../by-pattern/anti-corruption-layer.html">anti-corruption layer</a>.</li>
+<li>This usually <strong>agrees with</strong> <a href="#sec-decompose-by-business-capability">decompose by business capability</a> — use both.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Your "Customer" means different things to Sales (a lead with a pipeline stage) and to Support (an account with
+tickets). What does DDD say to do?</p>
+<details><summary>Show answer</summary>
+<p>That linguistic divergence <em>is</em> the bounded-context boundary. Don't build one shared Customer model — create
+two contexts (Sales and Support), each with its own Customer model and language, and integrate them via events or an API
+(with an ACL if one must conform to the other). Forcing a single model is what creates the fuzzy, over-coupled mess.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-decompose-by-business-capability">Decompose by business capability</a> ·
+<a href="../by-pattern/business-logic.html">Domain model &amp; aggregate</a> · <a href="../by-pattern/anti-corruption-layer.html">Anti-corruption layer</a> ·
+<a href="../by-pattern/domain-event.html">Domain event</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="ch01.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Ch 1 · Escaping Monolithic Hell</span></a>
+      <a class="next" href="ch03.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Ch 3 · Interprocess Communication</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Organise a service's domain logic either as simple
+  procedural <em>transaction scripts</em> or as an object-oriented <em>domain model</em> — and in a microservice, structure
+  that model around DDD <em>aggregates</em>, because an aggregate is the unit of consistency you can safely update in one
+  local transaction.</div>
+  <div class="g-when">
+    <h4>Domain model + aggregates when</h4>
+    <ul>
+      <li>The business logic is <strong>complex</strong> and evolving.</li>
+      <li>You need clear <strong>consistency boundaries</strong> across services.</li>
+      <li>You'll publish <a href="ref:domain-event">domain events</a> or use <a href="ref:event-sourcing">event sourcing</a>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Transaction script is fine when</h4>
+    <ul>
+      <li>Logic is <strong>thin CRUD</strong> with little behaviour.</li>
+      <li>The service is small and unlikely to grow complex.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: where does the logic live?</h2>
+<p>Every service has business rules. Two classic ways to organise them:</p>
+<ul>
+  <li><strong>Transaction script</strong> — a procedure per request that does the work, with data in dumb structs. Great
+  for simple logic; degrades into tangled spaghetti as complexity grows.</li>
+  <li><strong>Domain model</strong> — a web of objects that hold <em>both</em> data and behaviour. Scales with complexity;
+  the foundation of Domain-Driven Design.</li>
+</ul>
+<p>But a domain model in a distributed system raises a new question the monolith never had: <em>what set of objects can I
+update together in a single transaction?</em> Because each service has one database and you can't span a transaction
+across services, you need explicit consistency boundaries. That's the <strong>aggregate</strong>.</p>
+
+<h2>The pattern: aggregates as consistency boundaries</h2>
+<p>An <strong>aggregate</strong> is a cluster of domain objects treated as a single unit. It has a single
+<strong>aggregate root</strong> (the only entry point) and a clear boundary. The <code>Order</code> aggregate, for
+example, owns its <code>OrderLineItems</code> and <code>DeliveryInfo</code>.</p>
+
+<figure class="diagram">
+<figcaption>The Order aggregate — a root plus the objects inside its boundary</figcaption>
+<pre class="mermaid">
+classDiagram
+  class Order {
+    +OrderId id
+    +OrderState state
+    +place()
+    +cancel()
+    +revise()
+  }
+  class OrderLineItem {
+    +menuItemId
+    +quantity
+  }
+  class DeliveryInfo {
+    +address
+    +deliveryTime
+  }
+  Order "1" *-- "many" OrderLineItem
+  Order "1" *-- "1" DeliveryInfo
+</pre>
+</figure>
+
+<h3>The two rules that matter most</h3>
+<ol>
+  <li><strong>Reference other aggregates by identity, not by object reference.</strong> An <code>Order</code> holds a
+  <code>consumerId</code>, not a <code>Consumer</code> object. This keeps aggregates loosely coupled and lets each live in
+  its own service.</li>
+  <li><strong>One transaction updates exactly one aggregate.</strong> An aggregate is the consistency boundary. To keep
+  <em>several</em> aggregates consistent (in the same or different services), use a <a href="ref:saga">saga</a> driven by
+  <a href="ref:domain-event">domain events</a> — not a bigger transaction.</li>
+</ol>
+
+<figure class="arch">
+  <figcaption>Architecture — aggregates map to transactions and to services</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="arch-group" data-label="Order Service (1 txn = 1 aggregate)">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Order</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>event / saga</span></div>
+    <div class="arch-group" data-label="Kitchen Service">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Ticket</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>event / saga</span></div>
+    <div class="arch-group" data-label="Consumer Service">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Consumer</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>Aggregate granularity — a design dial</h2>
+<p>Bigger aggregates give stronger consistency but worse concurrency and bigger transactions; smaller aggregates give
+better scalability but push more consistency work onto sagas. The book's advice: prefer <strong>small aggregates</strong>,
+and reach for sagas to coordinate across them.</p>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Why "Order" and "Restaurant" are separate aggregates</span>
+<h3>Designing for independent change &amp; scale</h3>
+<p>An <code>Order</code> references a <code>restaurantId</code> rather than embedding the <code>Restaurant</code>. That
+lets Order Service and Restaurant Service be separate services with separate databases, updated in separate transactions.
+When a restaurant changes its menu, an event flows to Order Service, which updates its own replica — no cross-service
+transaction needed.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li>Aggregates come from Eric Evans' <em>Domain-Driven Design</em> and Vaughn Vernon's "Effective Aggregate Design".</li>
+  <li><strong>jMolecules</strong> and <strong>Spring Modulith</strong> let you express aggregates/entities/value objects in
+  code and verify the rules with <strong>ArchUnit</strong> tests.</li>
+  <li>The aggregate-per-transaction rule is exactly what makes <a href="ref:event-sourcing">event sourcing</a> and
+  <a href="ref:domain-event">domain events</a> clean to implement.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Anemic domain model</strong> — objects with getters/setters and no behaviour; all logic in "service" classes.
+DDD vocabulary, transaction-script reality.</li>
+<li><strong>Object references across aggregates</strong> — embedding a <code>Restaurant</code> object inside
+<code>Order</code> couples them and breaks the one-DB-per-service model.</li>
+<li><strong>God aggregates</strong> — huge boundaries that serialise unrelated updates and create contention.</li>
+<li><strong>Multi-aggregate transactions</strong> — trying to update two aggregates atomically; use a <a href="ref:saga">saga</a>.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Simple logic → <strong>transaction script</strong>; complex logic → <strong>domain model</strong>.</li>
+<li>An <strong>aggregate</strong> is the consistency boundary: <em>one transaction updates one aggregate</em>.</li>
+<li>Reference other aggregates <strong>by id</strong>, not by object — that's what lets them live in separate services.</li>
+<li>Coordinate across aggregates with <a href="ref:domain-event">domain events</a> + <a href="ref:saga">sagas</a>.</li>
+<li>Prefer <strong>small</strong> aggregates; avoid the anemic-model anti-pattern.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why must the <code>Order</code> aggregate reference the customer by <code>consumerId</code> rather than holding a
+<code>Consumer</code> object?</p>
+<details><summary>Show answer</summary>
+<p>Because <code>Consumer</code> is a different aggregate living in a different service/database. Holding a direct object
+reference would couple the two, imply you could load/update them together, and tempt a multi-aggregate transaction that's
+impossible across services. Referencing by id keeps the boundary crisp: each aggregate is updated in its own transaction,
+and cross-aggregate consistency is handled by events/sagas.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:decompose-by-subdomain">Decompose by subdomain</a> · <a href="ref:domain-event">Domain event</a> ·
+<a href="ref:event-sourcing">Event sourcing</a> · <a href="ref:saga">Saga</a></p>

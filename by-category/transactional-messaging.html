@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Publishing messages reliably as part of a database transaction (outbox, CDC, log tailing).">
+  <title>Transactional Messaging · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html" class="active"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Categories</div>
+    <nav class="nav">
+      <a href="application-architecture.html"><span class="nidx">01</span><span>Application Architecture</span></a>
+      <a href="decomposition.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="communication.html"><span class="nidx">03</span><span>Communication Styles</span></a>
+      <a href="reliability.html"><span class="nidx">04</span><span>Reliable Communication</span></a>
+      <a href="service-discovery.html"><span class="nidx">05</span><span>Service Discovery</span></a>
+      <a href="transactional-messaging.html" class="active"><span class="nidx">06</span><span>Transactional Messaging</span></a>
+      <a href="data-consistency.html"><span class="nidx">07</span><span>Data Consistency</span></a>
+      <a href="business-logic.html"><span class="nidx">08</span><span>Business Logic Design</span></a>
+      <a href="querying.html"><span class="nidx">09</span><span>Querying</span></a>
+      <a href="external-api.html"><span class="nidx">10</span><span>External API</span></a>
+      <a href="testing.html"><span class="nidx">11</span><span>Testing</span></a>
+      <a href="security.html"><span class="nidx">12</span><span>Security</span></a>
+      <a href="cross-cutting.html"><span class="nidx">13</span><span>Cross-Cutting Concerns</span></a>
+      <a href="observability.html"><span class="nidx">14</span><span>Observability</span></a>
+      <a href="deployment.html"><span class="nidx">15</span><span>Deployment</span></a>
+      <a href="refactoring.html"><span class="nidx">16</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Category</a><span class="sep">/</span>Transactional Messaging</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge">1 lesson</span> <span class="badge badge--diff">3 patterns</span></div>
+      <h1>Transactional Messaging</h1>
+      <p class="page-sub">Publishing messages reliably as part of a database transaction (outbox, CDC, log tailing).</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-transactional-messaging"><h2 class="unit-title">Transactional Messaging (Outbox &amp; CDC)</h2><div class="tags"><span class="badge badge--pat">Transactional outbox</span><span class="badge badge--pat">Polling publisher</span><span class="badge badge--pat">Transaction log tailing</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> To update its database <em>and</em> publish a message
+  reliably, a service writes the message to an <em>outbox</em> table inside the same local transaction, then a separate
+  relay reads the outbox and publishes to the broker — so the two never get out of sync.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>A service must <strong>change state and emit an event/command</strong> atomically.</li>
+      <li>You're implementing <a href="../by-pattern/saga.html">sagas</a> or <a href="../by-pattern/event-sourcing.html">event-driven</a> flows.</li>
+      <li>Losing or duplicating events would corrupt business state.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You're tempted to "just publish after commit" — that's the bug this fixes.</li>
+      <li>You forget the consumer side must be <strong>idempotent</strong>.</li>
+      <li>Ordering across the outbox matters — preserve it.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: the dual-write trap</h3>
+<p>A service often needs to do two things as one logical step: <strong>commit a database change</strong> and
+<strong>publish a message</strong>. But the database and the broker are two separate systems. If you commit the DB and
+then crash before publishing, the event is lost forever. If you publish first and then the DB commit fails, you've
+announced something that never happened. You cannot wrap a normal DB transaction and a Kafka publish in one atomic
+operation — and 2PC is off the table.</p>
+
+<figure class="diagram">
+<figcaption>The dual-write problem — a crash between the two writes corrupts the system</figcaption>
+<pre class="mermaid">
+flowchart LR
+  A[Update DB] --> X{crash here?}
+  X -- yes --> L[message NEVER published<br/>state &amp; events diverge]
+  X -- no --> P[Publish to broker]
+  classDef bad fill:#7f1d1d,stroke:#f87171,color:#fff;
+  class L bad;
+</pre>
+</figure>
+
+<h3>The pattern: Transactional Outbox</h3>
+<p>Don't publish directly. Instead, in the <em>same</em> local transaction that updates the business tables, also insert
+the message into an <strong>OUTBOX</strong> table. Because it's one transaction, the message is saved if and only if the
+business change is saved. A separate <strong>message relay</strong> then reads the outbox and publishes to the broker,
+marking rows as sent.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — the transactional outbox and message relay</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Service</span><span class="node-name">Order Service</span></div>
+      <div class="flow-arrow"><span>1: one local txn</span></div>
+      <div class="arch-group" data-label="Service database (one transaction)">
+        <div class="node node--db"><span class="node-name">ORDER table</span></div>
+        <div class="node node--db"><span class="node-name">OUTBOX table</span></div>
+      </div>
+    </div>
+    <div class="flow-arrow is-down"><span>2: relay reads outbox</span></div>
+    <div class="arch-flow">
+      <div class="node node--ext"><span class="node-kind">Relay</span><span class="node-name">Message Relay</span><span class="node-sub">poller or CDC</span></div>
+      <div class="flow-arrow"><span>3: publish</span></div>
+      <div class="node node--broker"><span class="node-name">Kafka</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h3>How it works — two ways to relay</h3>
+<h4>1. Polling Publisher</h4>
+<p>The relay periodically <code>SELECT</code>s unsent rows from the outbox, publishes them, and marks them sent. Dead
+simple and portable, but polling adds load and latency, and you must be careful to preserve order and avoid double-sends.</p>
+
+<h4>2. Transaction Log Tailing (Change Data Capture)</h4>
+<p>The relay <em>tails the database's transaction log</em> (e.g. Postgres WAL, MySQL binlog) and publishes each outbox
+insert as it's committed — no polling, near-real-time, low overhead. This is the modern default, powered by
+<strong>Debezium</strong>.</p>
+<figure class="diagram">
+<figcaption>Sequence — outbox + CDC (Debezium) publishing to Kafka</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant S as Order Service
+  participant DB as Order DB
+  participant CDC as Debezium (log tailing)
+  participant K as Kafka
+  participant C as Consumer
+  S->>DB: BEGIN; insert ORDER + insert OUTBOX; COMMIT
+  CDC->>DB: read WAL / binlog
+  CDC->>K: publish outbox row as event
+  K->>C: deliver event (at least once)
+  C->>C: check message id (idempotent) then handle
+</pre>
+</figure>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">Outbox + Idempotent Consumer = effectively exactly-once</div>
+<p>The outbox guarantees <em>at-least-once</em> publishing. Pair it with an <strong>idempotent consumer</strong> (record
+each processed message id and skip duplicates) and you get effectively <em>exactly-once</em> business semantics — without
+distributed transactions.</p>
+</div></div>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Order placement</span>
+<h4>"Order created" must always reach the kitchen</h4>
+<p>When Order Service creates an order, it inserts the <code>ORDER</code> row and an <code>OrderCreated</code> outbox row
+in one transaction. Debezium streams that to Kafka; Kitchen consumes it. Even if Order Service crashes the instant after
+commit, the event still flows — the kitchen never misses an order, and a redelivery is harmlessly deduplicated.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>Debezium</strong> (2.5+ as of 2025) — the industry-standard CDC engine; runs as a Kafka Connect connector,
+  supports Postgres, MySQL, MongoDB, SQL Server, Oracle. It even has a dedicated <em>outbox event router</em>.</li>
+  <li><strong>Kafka Connect</strong> — hosts Debezium and routes/transforms the captured events.</li>
+  <li><strong>SeatGeek</strong> and many others have publicly described using the transactional outbox to make real-time
+  data distribution reliable.</li>
+  <li>Frameworks like <strong>Eventuate Tram</strong> provide outbox + relay out of the box (used in the book).</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>"Publish after commit" code</strong> — the exact dual-write bug; one crash and your events lie.</li>
+<li><strong>Non-idempotent consumers</strong> — at-least-once delivery <em>will</em> redeliver; dedupe by message id.</li>
+<li><strong>Losing order</strong> — publish/consume outbox rows in commit order (use ordering keys).</li>
+<li><strong>Outbox table growth</strong> — purge/archive sent rows, or the table balloons.</li>
+<li><strong>Polling too aggressively</strong> — tune interval, or switch to CDC for low latency + low load.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Never dual-write to DB + broker directly — write to an <strong>outbox table in the same transaction</strong>.</li>
+<li>A <strong>message relay</strong> publishes the outbox: <em>polling publisher</em> (simple) or <em>log tailing/CDC</em> (modern, real-time).</li>
+<li><strong>Debezium</strong> is the go-to CDC relay; it has a built-in outbox router.</li>
+<li>Outbox (at-least-once) + <strong>idempotent consumer</strong> ⇒ effectively exactly-once.</li>
+<li>This is the reliability foundation under <a href="../by-pattern/saga.html">sagas</a>, <a href="../by-pattern/domain-event.html">domain events</a> and <a href="../by-pattern/event-sourcing.html">event sourcing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is inserting into an OUTBOX table safe when publishing directly to Kafka after the commit is not?</p>
+<details><summary>Show answer</summary>
+<p>The outbox insert is part of the <em>same</em> local database transaction as the business change, so they commit (or
+roll back) together atomically — there's no window where one succeeded and the other didn't. Publishing to Kafka is a
+separate system: a crash between the DB commit and the publish leaves the two permanently inconsistent. The relay then
+publishes from the durably-committed outbox, so no event is ever lost.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/messaging.html">Asynchronous messaging</a> · <a href="../by-pattern/saga.html">Saga</a> ·
+<a href="../by-pattern/event-sourcing.html">Event sourcing</a> · <a href="../by-pattern/domain-event.html">Domain event</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="service-discovery.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Service Discovery</span></a>
+      <a class="next" href="data-consistency.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Data Consistency</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

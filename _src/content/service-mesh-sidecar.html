@@ -1,0 +1,122 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A <em>sidecar</em> is a helper proxy deployed alongside each
+  service instance that intercepts its network traffic; a fleet of sidecars plus a control plane is a <em>service mesh</em>,
+  which moves cross-cutting network concerns — mTLS, retries, circuit-breaking, routing, telemetry — out of your code and
+  into the infrastructure, for every language at once.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You're <strong>polyglot</strong> and want uniform networking/security/observability.</li>
+      <li>You want <strong>zero-trust mTLS</strong> &amp; traffic control without app changes.</li>
+      <li>You run many services on <strong>Kubernetes</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You have a handful of services — the operational cost outweighs the gain.</li>
+      <li>The team can't operate the <strong>control plane</strong> (it's a critical component).</li>
+      <li>You'd use the mesh to paper over bad service design.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: the same network code, in every service, in every language</h2>
+<p>mTLS, retries, timeouts, <a href="ref:circuit-breaker">circuit-breaking</a>, load-balancing, traffic shifting and
+request telemetry are needed by <em>every</em> service. Implementing them in a per-language <a href="ref:microservice-chassis">chassis</a>
+means duplicated effort and drift across Java/Go/Python services. What if the platform handled them instead?</p>
+
+<h2>The pattern: a proxy sidecar + a control plane</h2>
+<p>Deploy a <strong>sidecar proxy</strong> (commonly Envoy) in the same pod as each service. All inbound/outbound traffic
+flows through it. A central <strong>control plane</strong> configures every sidecar with policy (security, routing,
+resilience). Together: a <strong>service mesh</strong>. Your application code just makes plain calls; the mesh does the
+rest transparently.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — data plane (sidecars) governed by a control plane</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Control plane</span><span class="node-name">istiod / Linkerd</span><span class="node-sub">policy · certs · config</span></div>
+    <div class="flow-arrow is-down"><span>configures sidecars</span></div>
+    <div class="arch-flow">
+      <div class="arch-group" data-label="Pod A">
+        <div class="node node--service"><span class="node-name">Service A</span></div>
+        <div class="node node--ext"><span class="node-kind">Sidecar</span><span class="node-name">Proxy</span></div>
+      </div>
+      <div class="flow-arrow is-bi"><span>mTLS</span></div>
+      <div class="arch-group" data-label="Pod B">
+        <div class="node node--ext"><span class="node-kind">Sidecar</span><span class="node-name">Proxy</span></div>
+        <div class="node node--service"><span class="node-name">Service B</span></div>
+      </div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>What the mesh gives you (without touching app code)</h2>
+<ul>
+  <li><strong>Security:</strong> automatic mutual TLS between services (zero-trust), identity, authorization policies.</li>
+  <li><strong>Resilience:</strong> retries, timeouts, circuit-breaking (outlier detection), load-balancing.</li>
+  <li><strong>Traffic management:</strong> canary &amp; blue-green, weighted routing, fault injection, mirroring.</li>
+  <li><strong>Observability:</strong> consistent golden metrics, traces and access logs for every call.</li>
+</ul>
+
+<div class="callout callout--story"><div class="ic">&#128640;</div><div class="body">
+<div class="ttl">2024+ : the sidecar-less shift (ambient mesh)</div>
+<p>Sidecars cost memory/CPU per pod (an Envoy each). In 2024 <strong>Istio Ambient Mesh</strong> reached GA, replacing
+per-pod sidecars with a per-node <em>ztunnel</em> (L4 mTLS) plus optional per-namespace <em>waypoint</em> proxies (L7) —
+cutting proxy overhead dramatically and removing pod restarts to join the mesh. <strong>Cilium</strong> pushes mesh
+features into the Linux kernel via <em>eBPF</em>, aiming for near-zero overhead. The mesh is getting cheaper.</p>
+</div></div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Zero-trust payments</span>
+<h3>Lock down who can call the ledger</h3>
+<p>An Istio <code>AuthorizationPolicy</code> ensures only <code>payment-processor</code> may call
+<code>ledger</code>, and strict mTLS encrypts all service-to-service traffic — enforced by sidecars, with no change to the
+services themselves. Security becomes a deployable policy, not scattered code.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Envoy</strong> (born at <strong>Lyft</strong>) is the de-facto data-plane proxy.</li>
+  <li><strong>Istio</strong> — the most featureful mesh (now with Ambient mode); <strong>Linkerd</strong> — lightweight,
+  Rust-based, simple (<strong>Monzo</strong> ran it across 1,500+ services); <strong>Consul Connect</strong>,
+  <strong>Cilium</strong> (eBPF), <strong>AWS App Mesh</strong>.</li>
+  <li><strong>Dapr</strong> overlaps as a sidecar runtime for app-level concerns (pub/sub, state, invocation).</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Sidecar overhead</strong> at scale — thousands of Envoys add real RAM/CPU (ambient/eBPF mitigate this).</li>
+<li><strong>Injection misconfig</strong> — a broken sidecar webhook silently drops traffic.</li>
+<li><strong>Control-plane as SPOF</strong> — run <code>istiod</code> HA; it's critical infrastructure.</li>
+<li><strong>Mesh-as-a-crutch</strong> — observability can mask poor API/service design rather than fix it.</li>
+<li><strong>Adopting too early</strong> — a few services don't justify a mesh's operational weight.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A <strong>sidecar</strong> proxy + <strong>control plane</strong> = a service mesh that handles networking concerns for you.</li>
+<li>Get <strong>mTLS, resilience, traffic control and telemetry</strong> uniformly, across all languages, with no app code.</li>
+<li>The 2024+ trend is <strong>sidecar-less / ambient</strong> (Istio Ambient, Cilium eBPF) to slash overhead.</li>
+<li>Complements the <a href="ref:microservice-chassis">chassis</a>; offloads <a href="ref:circuit-breaker">circuit breaking</a>, <a href="ref:service-discovery">discovery</a>, <a href="ref:security-access-token">mTLS</a> and <a href="ref:observability">tracing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>How can a service mesh give you mutual TLS between all services without any team changing their application code?</p>
+<details><summary>Show answer</summary>
+<p>Because traffic is intercepted by the sidecar proxy, not the app. The control plane issues each workload a short-lived
+identity/certificate and configures the sidecars to establish mTLS on every connection transparently. The application
+still makes a plain call to "service-B"; the sidecars terminate/originate the encrypted, mutually-authenticated connection
+underneath — so encryption and identity are an infrastructure policy, not application logic.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:circuit-breaker">Circuit breaker</a> · <a href="ref:service-discovery">Service discovery</a> ·
+<a href="ref:observability">Observability</a> · <a href="ref:security-access-token">Access token</a> ·
+<a href="ref:deployment-patterns">Deployment</a></p>

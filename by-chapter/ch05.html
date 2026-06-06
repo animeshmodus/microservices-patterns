@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Transaction script vs domain model, DDD aggregates, and publishing domain events.">
+  <title>Designing Business Logic · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html" class="active"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Chapters</div>
+    <nav class="nav">
+      <a href="ch01.html"><span class="nidx">01</span><span>Escaping Monolithic Hell</span></a>
+      <a href="ch02.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="ch03.html"><span class="nidx">03</span><span>Interprocess Communication</span></a>
+      <a href="ch04.html"><span class="nidx">04</span><span>Managing Transactions with Sagas</span></a>
+      <a href="ch05.html" class="active"><span class="nidx">05</span><span>Designing Business Logic</span></a>
+      <a href="ch06.html"><span class="nidx">06</span><span>Developing Business Logic with Event Sourcing</span></a>
+      <a href="ch07.html"><span class="nidx">07</span><span>Implementing Queries</span></a>
+      <a href="ch08.html"><span class="nidx">08</span><span>External API Patterns</span></a>
+      <a href="ch09.html"><span class="nidx">09</span><span>Testing Microservices (Parts 1 &amp; 2)</span></a>
+      <a href="ch11.html"><span class="nidx">11</span><span>Developing Production-Ready Services</span></a>
+      <a href="ch12.html"><span class="nidx">12</span><span>Deploying Microservices</span></a>
+      <a href="ch13.html"><span class="nidx">13</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Chapter</a><span class="sep">/</span>Designing Business Logic</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--ch">Chapter 5</span> <span class="badge">2 lessons</span> <span class="badge badge--diff">4 patterns</span></div>
+      <h1>Chapter 5 · Designing Business Logic</h1>
+      <p class="page-sub">Transaction script vs domain model, DDD aggregates, and publishing domain events.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-business-logic"><h2 class="unit-title">Business Logic: Domain Model &amp; Aggregate</h2><div class="tags"><span class="badge badge--pat">Transaction script</span><span class="badge badge--pat">Domain model</span><span class="badge badge--pat">Aggregate</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Organise a service's domain logic either as simple
+  procedural <em>transaction scripts</em> or as an object-oriented <em>domain model</em> — and in a microservice, structure
+  that model around DDD <em>aggregates</em>, because an aggregate is the unit of consistency you can safely update in one
+  local transaction.</div>
+  <div class="g-when">
+    <h5>Domain model + aggregates when</h5>
+    <ul>
+      <li>The business logic is <strong>complex</strong> and evolving.</li>
+      <li>You need clear <strong>consistency boundaries</strong> across services.</li>
+      <li>You'll publish <a href="#sec-domain-event">domain events</a> or use <a href="../by-pattern/event-sourcing.html">event sourcing</a>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Transaction script is fine when</h5>
+    <ul>
+      <li>Logic is <strong>thin CRUD</strong> with little behaviour.</li>
+      <li>The service is small and unlikely to grow complex.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: where does the logic live?</h3>
+<p>Every service has business rules. Two classic ways to organise them:</p>
+<ul>
+  <li><strong>Transaction script</strong> — a procedure per request that does the work, with data in dumb structs. Great
+  for simple logic; degrades into tangled spaghetti as complexity grows.</li>
+  <li><strong>Domain model</strong> — a web of objects that hold <em>both</em> data and behaviour. Scales with complexity;
+  the foundation of Domain-Driven Design.</li>
+</ul>
+<p>But a domain model in a distributed system raises a new question the monolith never had: <em>what set of objects can I
+update together in a single transaction?</em> Because each service has one database and you can't span a transaction
+across services, you need explicit consistency boundaries. That's the <strong>aggregate</strong>.</p>
+
+<h3>The pattern: aggregates as consistency boundaries</h3>
+<p>An <strong>aggregate</strong> is a cluster of domain objects treated as a single unit. It has a single
+<strong>aggregate root</strong> (the only entry point) and a clear boundary. The <code>Order</code> aggregate, for
+example, owns its <code>OrderLineItems</code> and <code>DeliveryInfo</code>.</p>
+
+<figure class="diagram">
+<figcaption>The Order aggregate — a root plus the objects inside its boundary</figcaption>
+<pre class="mermaid">
+classDiagram
+  class Order {
+    +OrderId id
+    +OrderState state
+    +place()
+    +cancel()
+    +revise()
+  }
+  class OrderLineItem {
+    +menuItemId
+    +quantity
+  }
+  class DeliveryInfo {
+    +address
+    +deliveryTime
+  }
+  Order "1" *-- "many" OrderLineItem
+  Order "1" *-- "1" DeliveryInfo
+</pre>
+</figure>
+
+<h4>The two rules that matter most</h4>
+<ol>
+  <li><strong>Reference other aggregates by identity, not by object reference.</strong> An <code>Order</code> holds a
+  <code>consumerId</code>, not a <code>Consumer</code> object. This keeps aggregates loosely coupled and lets each live in
+  its own service.</li>
+  <li><strong>One transaction updates exactly one aggregate.</strong> An aggregate is the consistency boundary. To keep
+  <em>several</em> aggregates consistent (in the same or different services), use a <a href="../by-pattern/saga.html">saga</a> driven by
+  <a href="#sec-domain-event">domain events</a> — not a bigger transaction.</li>
+</ol>
+
+<figure class="arch">
+  <figcaption>Architecture — aggregates map to transactions and to services</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="arch-group" data-label="Order Service (1 txn = 1 aggregate)">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Order</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>event / saga</span></div>
+    <div class="arch-group" data-label="Kitchen Service">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Ticket</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>event / saga</span></div>
+    <div class="arch-group" data-label="Consumer Service">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Consumer</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h3>Aggregate granularity — a design dial</h3>
+<p>Bigger aggregates give stronger consistency but worse concurrency and bigger transactions; smaller aggregates give
+better scalability but push more consistency work onto sagas. The book's advice: prefer <strong>small aggregates</strong>,
+and reach for sagas to coordinate across them.</p>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Why "Order" and "Restaurant" are separate aggregates</span>
+<h4>Designing for independent change &amp; scale</h4>
+<p>An <code>Order</code> references a <code>restaurantId</code> rather than embedding the <code>Restaurant</code>. That
+lets Order Service and Restaurant Service be separate services with separate databases, updated in separate transactions.
+When a restaurant changes its menu, an event flows to Order Service, which updates its own replica — no cross-service
+transaction needed.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li>Aggregates come from Eric Evans' <em>Domain-Driven Design</em> and Vaughn Vernon's "Effective Aggregate Design".</li>
+  <li><strong>jMolecules</strong> and <strong>Spring Modulith</strong> let you express aggregates/entities/value objects in
+  code and verify the rules with <strong>ArchUnit</strong> tests.</li>
+  <li>The aggregate-per-transaction rule is exactly what makes <a href="../by-pattern/event-sourcing.html">event sourcing</a> and
+  <a href="#sec-domain-event">domain events</a> clean to implement.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Anemic domain model</strong> — objects with getters/setters and no behaviour; all logic in "service" classes.
+DDD vocabulary, transaction-script reality.</li>
+<li><strong>Object references across aggregates</strong> — embedding a <code>Restaurant</code> object inside
+<code>Order</code> couples them and breaks the one-DB-per-service model.</li>
+<li><strong>God aggregates</strong> — huge boundaries that serialise unrelated updates and create contention.</li>
+<li><strong>Multi-aggregate transactions</strong> — trying to update two aggregates atomically; use a <a href="../by-pattern/saga.html">saga</a>.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Simple logic → <strong>transaction script</strong>; complex logic → <strong>domain model</strong>.</li>
+<li>An <strong>aggregate</strong> is the consistency boundary: <em>one transaction updates one aggregate</em>.</li>
+<li>Reference other aggregates <strong>by id</strong>, not by object — that's what lets them live in separate services.</li>
+<li>Coordinate across aggregates with <a href="#sec-domain-event">domain events</a> + <a href="../by-pattern/saga.html">sagas</a>.</li>
+<li>Prefer <strong>small</strong> aggregates; avoid the anemic-model anti-pattern.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why must the <code>Order</code> aggregate reference the customer by <code>consumerId</code> rather than holding a
+<code>Consumer</code> object?</p>
+<details><summary>Show answer</summary>
+<p>Because <code>Consumer</code> is a different aggregate living in a different service/database. Holding a direct object
+reference would couple the two, imply you could load/update them together, and tempt a multi-aggregate transaction that's
+impossible across services. Referencing by id keeps the boundary crisp: each aggregate is updated in its own transaction,
+and cross-aggregate consistency is handled by events/sagas.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/decompose-by-subdomain.html">Decompose by subdomain</a> · <a href="#sec-domain-event">Domain event</a> ·
+<a href="../by-pattern/event-sourcing.html">Event sourcing</a> · <a href="../by-pattern/saga.html">Saga</a></p>
+</section>
+<section class="unit" id="sec-domain-event"><h2 class="unit-title">Domain Event</h2><div class="tags"><span class="badge badge--pat">Domain event</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A domain event is a record that "something significant
+  happened" to an aggregate (<code>OrderPlaced</code>, <code>TicketAccepted</code>); the aggregate publishes it so other
+  services and read models can react — turning a tangle of synchronous calls into a clean event-driven flow.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>Other services/views must <strong>react to state changes</strong>.</li>
+      <li>You're building <a href="../by-pattern/saga.html">sagas</a>, <a href="../by-pattern/cqrs.html">CQRS</a> read models, or notifications.</li>
+      <li>You want to <strong>decouple</strong> the producer from unknown future consumers.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You publish CRUD noise ("row updated") instead of <strong>business-meaningful</strong> events.</li>
+      <li>You publish without the <a href="../by-pattern/transactional-messaging.html">outbox</a> (events get lost).</li>
+      <li>Consumers assume exactly-once / strict ordering without designing for it.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: how does the rest of the system find out?</h3>
+<p>When an <code>Order</code> is placed, the kitchen needs a ticket, accounting needs to bill, the customer needs a
+notification, and an analytics read model needs updating. If Order Service calls each of them synchronously, you rebuild
+the coupling and availability problems microservices were meant to solve. There's a better way: <em>announce the fact and
+let interested parties react.</em></p>
+
+<h3>The pattern: aggregates publish events</h3>
+<p>A <strong>domain event</strong> is an immutable record of something that happened in the domain, named in the past
+tense. When an aggregate changes state, it emits the corresponding event. The event carries enough data
+(<em>enrichment</em>) for typical consumers to act without calling back.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — one event, many independent reactions</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--service" style="align-self:center"><span class="node-kind">Aggregate</span><span class="node-name">Order → OrderPlaced</span></div>
+    <div class="flow-arrow is-down"><span>publish (via outbox)</span></div>
+    <div class="node node--broker" style="align-self:center"><span class="node-kind">Broker</span><span class="node-name">order events topic</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-name">Kitchen</span><span class="node-sub">create ticket</span></div>
+      <div class="node node--service"><span class="node-name">Notification</span><span class="node-sub">email/SMS</span></div>
+      <div class="node node--service"><span class="node-name">Analytics</span><span class="node-sub">update read model</span></div>
+    </div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--service">Service</span><span class="chip chip--broker">Broker</span></div>
+  </div>
+</figure>
+
+<h3>How it works</h3>
+<ol>
+  <li><strong>Identify events</strong> — collaboratively, often via <em>Event Storming</em> (orange sticky notes = domain
+  events). Name them in the business's ubiquitous language: <code>OrderPlaced</code>, not <code>OrderTableUpdated</code>.</li>
+  <li><strong>Generate them</strong> — the aggregate produces events as part of handling a command; the service collects
+  and persists them.</li>
+  <li><strong>Publish reliably</strong> — write the event to the <a href="../by-pattern/transactional-messaging.html">transactional
+  outbox</a> in the same transaction as the state change, then relay to the broker.</li>
+  <li><strong>Consume them</strong> — subscribers react idempotently. New consumers can be added later with zero changes
+  to the producer.</li>
+</ol>
+<figure class="diagram">
+<figcaption>Sequence — emit, persist atomically, then fan out</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant H as Command Handler
+  participant A as Order Aggregate
+  participant DB as DB (+ outbox)
+  participant K as Broker
+  participant S as Subscribers
+  H->>A: place(order)
+  A-->>H: state=PLACED + [OrderPlaced]
+  H->>DB: save order + OrderPlaced (one txn)
+  DB-->>K: relay publishes OrderPlaced
+  K->>S: deliver to Kitchen, Notification, Analytics
+</pre>
+</figure>
+
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Event enrichment — a balance</div>
+<p>A thin event (<code>{orderId}</code>) forces consumers to call back for details (chatty, coupled). A fat, enriched
+event (<code>{orderId, total, lineItems, consumerId}</code>) lets most consumers act alone — but couples the event schema
+to consumer needs. Enrich for the common cases; let rare consumers query.</p>
+</div></div>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Adding a feature without touching the producer</span>
+<h4>"Loyalty points on delivery"</h4>
+<p>Marketing wants to award points when an order is delivered. Because Delivery Service already publishes
+<code>OrderDelivered</code>, the new Loyalty Service just subscribes to that event. Order/Delivery code is unchanged — the
+event stream is an extension point. That's the open/closed principle at architecture scale.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li>Domain events are the backbone of <strong>event-driven architecture</strong> and the input to <a href="../by-pattern/cqrs.html">CQRS</a>
+  read models and <a href="../by-pattern/saga.html">choreographed sagas</a>.</li>
+  <li><strong>Apache Kafka</strong>, <strong>AWS EventBridge</strong>/<strong>SNS</strong>, and <strong>Google Pub/Sub</strong>
+  are common event backbones; a <strong>schema registry</strong> (Avro/Protobuf/JSON Schema) governs event contracts.</li>
+  <li><strong>Event Storming</strong> is the standard discovery technique; <strong>CloudEvents</strong> is a CNCF spec for
+  a common event envelope.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>CRUD events</strong> (<code>RowUpdated</code>) instead of business events — leaks the producer's schema and
+means nothing to consumers.</li>
+<li><strong>Publishing outside the outbox</strong> — the dual-write bug; events silently lost on crash.</li>
+<li><strong>Unversioned event schemas</strong> — a breaking change stops every consumer; evolve additively.</li>
+<li><strong>Hidden command-in-event</strong> — events should state facts, not boss consumers around ("send the email").</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>A domain event records a <strong>business fact</strong> (past tense) and decouples producer from consumers.</li>
+<li>Discover events with <strong>Event Storming</strong>; name them in the ubiquitous language.</li>
+<li>Publish them <strong>reliably</strong> via the <a href="../by-pattern/transactional-messaging.html">transactional outbox</a>.</li>
+<li><strong>Enrich</strong> events enough for common consumers; version schemas additively.</li>
+<li>Events feed <a href="../by-pattern/saga.html">sagas</a>, <a href="../by-pattern/cqrs.html">CQRS</a> views and <a href="../by-pattern/event-sourcing.html">event sourcing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is <code>OrderPlaced</code> a better event than <code>OrderTableRowInserted</code>?</p>
+<details><summary>Show answer</summary>
+<p><code>OrderPlaced</code> is a <em>business fact</em> in the ubiquitous language — stable, meaningful, and decoupled from
+how Order Service stores data. <code>OrderTableRowInserted</code> leaks an implementation detail (a table name): consumers
+now depend on the producer's schema, the event breaks if storage changes, and it carries no business intent. Events should
+describe domain happenings, not database mechanics.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-business-logic">Domain model &amp; aggregate</a> · <a href="../by-pattern/messaging.html">Asynchronous messaging</a> ·
+<a href="../by-pattern/transactional-messaging.html">Transactional messaging</a> · <a href="../by-pattern/event-sourcing.html">Event sourcing</a> ·
+<a href="../by-pattern/cqrs.html">CQRS</a> · <a href="../by-pattern/saga.html">Saga</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="ch04.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Ch 4 · Managing Transactions with Sagas</span></a>
+      <a class="next" href="ch06.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Ch 6 · Developing Business Logic with Event Sourcing</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

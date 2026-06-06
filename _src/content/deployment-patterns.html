@@ -1,0 +1,137 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> There are four ways to package and run a service —
+  as a <em>language-specific package</em>, in its own <em>virtual machine</em>, in a <em>container</em> (orchestrated by
+  Kubernetes), or as <em>serverless functions</em> — trading isolation, startup speed, resource efficiency and operational
+  burden against each other.</div>
+  <div class="g-when">
+    <h4>Default choice today</h4>
+    <ul>
+      <li><strong>Containers + Kubernetes</strong> for most long-running services.</li>
+      <li><strong>Serverless</strong> for event-driven, spiky, or glue workloads.</li>
+      <li><strong>VM</strong> for hard isolation / special hardware; <strong>package</strong> for legacy/simple cases.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You treat containers like VMs (SSH in, local state).</li>
+      <li>You underestimate <strong>Kubernetes</strong> operational complexity.</li>
+      <li>Serverless <strong>cold starts</strong> sit on a latency-critical path.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: independently deployable means deployable <em>how</em>?</h2>
+<p>Microservices promise frequent, independent deployment — but only if packaging and runtime make that cheap, fast and
+safe. The choice shapes startup time, isolation, density, cost and how much platform you must operate.</p>
+
+<h2>The four patterns</h2>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Pattern</th><th>Isolation</th><th>Startup</th><th>Efficiency</th><th>Ops burden</th><th>Best fit</th></tr></thead>
+<tbody>
+<tr><td><strong>Language package</strong> (JAR/WAR)</td><td>Process</td><td>Seconds</td><td>Low (shared host)</td><td>Low</td><td>Legacy/simple JVM apps</td></tr>
+<tr><td><strong>Virtual machine</strong></td><td>Hardware</td><td>Minutes</td><td>Low (idle VMs)</td><td>Medium</td><td>Hard isolation, GPUs, compliance</td></tr>
+<tr><td><strong>Container</strong> (Docker+K8s)</td><td>Kernel namespace</td><td>Seconds</td><td>High (bin-packing)</td><td>High (K8s)</td><td>General microservices</td></tr>
+<tr><td><strong>Serverless</strong> (Lambda…)</td><td>Per-invocation</td><td>ms–seconds (cold starts)</td><td>Highest (scale-to-zero)</td><td>Low–Medium</td><td>Event-driven, bursty</td></tr>
+</tbody>
+</table></div>
+
+<figure class="arch">
+  <figcaption>Architecture — a container per service, scheduled across a Kubernetes cluster</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Orchestrator</span><span class="node-name">Kubernetes control plane</span></div>
+    <div class="flow-arrow is-down"><span>schedules pods</span></div>
+    <div class="arch-flow">
+      <div class="arch-group" data-label="Node 1">
+        <div class="node node--service"><span class="node-name">Order ×3</span></div>
+        <div class="node node--service"><span class="node-name">Kitchen ×2</span></div>
+      </div>
+      <div class="arch-group" data-label="Node 2">
+        <div class="node node--service"><span class="node-name">Delivery ×2</span></div>
+        <div class="node node--service"><span class="node-name">Billing ×1</span></div>
+      </div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>How it works — the mainstream path</h2>
+<p>Most teams build a <strong>container image</strong> (multi-stage Dockerfile, minimal/distroless base), push it to a
+registry, and let <strong>Kubernetes</strong> run it: deployments + replicas, <a href="ref:service-discovery">service
+discovery</a> via DNS, autoscaling (HPA), <a href="ref:observability">health probes</a>, and
+<strong>zero-downtime rolling updates</strong>. <a href="ref:externalized-configuration">Config &amp; secrets</a> come from
+ConfigMaps/Secrets. A <a href="ref:service-mesh-sidecar">service mesh</a> can separate <em>release</em> from
+<em>deploy</em> (ship the bits, shift traffic later).</p>
+<figure class="diagram">
+<figcaption>Choosing a deployment style</figcaption>
+<pre class="mermaid">
+flowchart TD
+  A{Event-driven &amp; spiky?} -- yes --> S[Serverless<br/>Lambda / Cloud Run / Knative]
+  A -- no --> B{Need hard isolation<br/>or special hardware?}
+  B -- yes --> V[Dedicated VM<br/>immutable image]
+  B -- no --> C[Container + Kubernetes<br/>the default]
+  classDef hi fill:#064e3b,stroke:#34d399,color:#fff;
+  class C hi;
+</pre>
+</figure>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Retail</span>
+<h3>Black-Friday autoscaling on Kubernetes</h3>
+<p>The checkout container scales from 3 to 120 pods in ~90 seconds via the Horizontal Pod Autoscaler — something a
+VM-per-service model (minutes to boot an AMI) can't match. Bin-packing many containers per node keeps cost down off-peak.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · IoT / event processing</span>
+<h3>Serverless for bursty, fan-in workloads</h3>
+<p>50,000 devices publish telemetry; a Lambda scales from 0 to thousands of concurrent invocations during spikes and back
+to zero (you pay only for execution). Long-running stateful services, though, stay on Kubernetes to avoid cold-start and
+timeout limits.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Docker/containerd + Kubernetes</strong> are the industry default; <strong>Helm</strong>/<strong>Kustomize</strong>
+  template manifests and <strong>ArgoCD</strong>/<strong>Flux</strong> do GitOps delivery.</li>
+  <li><strong>Monzo</strong> and <strong>Airbnb</strong> run 1,000+ services on Kubernetes; <strong>Karpenter</strong>
+  autoscales nodes.</li>
+  <li>Serverless: <strong>AWS Lambda</strong>, <strong>Azure Functions</strong>, <strong>Google Cloud Run</strong>,
+  <strong>Knative</strong>; <strong>Coca-Cola</strong> and <strong>Nordstrom</strong> are cited adopters.</li>
+  <li>VM era pioneers: <strong>Netflix</strong> baked immutable AMIs with Packer and deployed via Spinnaker.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Containers treated as VMs</strong> — SSHing in, local stateful storage; breaks restart/scaling semantics.</li>
+<li><strong>Missing resource limits</strong> — noisy-neighbour CPU/memory starvation.</li>
+<li><strong>Bad probes</strong> — liveness that restarts on a slow dependency; readiness that admits traffic too early.</li>
+<li><strong>Serverless on a latency-critical sync path</strong> — cold starts hurt; and costs cross over containers at high sustained RPS.</li>
+<li><strong>Underestimating K8s</strong> — it's powerful but a real operational commitment.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Four options: <strong>package, VM, container, serverless</strong> — a trade-off of isolation/startup/efficiency/ops.</li>
+<li><strong>Container + Kubernetes</strong> is today's default; <strong>serverless</strong> shines for event-driven/bursty work.</li>
+<li>Aim for <strong>immutable artifacts</strong> + <strong>zero-downtime</strong> rolling updates.</li>
+<li>Lean on the platform for <a href="ref:service-discovery">discovery</a>, <a href="ref:externalized-configuration">config</a>, <a href="ref:observability">probes</a>; a <a href="ref:service-mesh-sidecar">mesh</a> separates release from deploy.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why can a containerised service scale out in seconds while a service-per-VM model takes minutes — and why does that
+matter for cost?</p>
+<details><summary>Show answer</summary>
+<p>A container shares the host kernel and starts as a process in a ready-made image (seconds), whereas a VM must boot a
+full OS (minutes). Faster start means autoscalers can track demand closely, so you run fewer idle instances "just in case."
+Combined with bin-packing many containers onto each node, that's far higher utilisation — you pay for capacity you
+actually use rather than over-provisioning slow-to-boot VMs.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:service-mesh-sidecar">Service mesh &amp; sidecar</a> · <a href="ref:service-discovery">Service discovery</a> ·
+<a href="ref:microservice-chassis">Microservice chassis</a> · <a href="ref:externalized-configuration">Externalized configuration</a></p>

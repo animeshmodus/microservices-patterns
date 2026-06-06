@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Understanding a running system: health checks, logs, metrics, tracing, exceptions, audit.">
+  <title>Observability · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html" class="active"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Categories</div>
+    <nav class="nav">
+      <a href="application-architecture.html"><span class="nidx">01</span><span>Application Architecture</span></a>
+      <a href="decomposition.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="communication.html"><span class="nidx">03</span><span>Communication Styles</span></a>
+      <a href="reliability.html"><span class="nidx">04</span><span>Reliable Communication</span></a>
+      <a href="service-discovery.html"><span class="nidx">05</span><span>Service Discovery</span></a>
+      <a href="transactional-messaging.html"><span class="nidx">06</span><span>Transactional Messaging</span></a>
+      <a href="data-consistency.html"><span class="nidx">07</span><span>Data Consistency</span></a>
+      <a href="business-logic.html"><span class="nidx">08</span><span>Business Logic Design</span></a>
+      <a href="querying.html"><span class="nidx">09</span><span>Querying</span></a>
+      <a href="external-api.html"><span class="nidx">10</span><span>External API</span></a>
+      <a href="testing.html"><span class="nidx">11</span><span>Testing</span></a>
+      <a href="security.html"><span class="nidx">12</span><span>Security</span></a>
+      <a href="cross-cutting.html"><span class="nidx">13</span><span>Cross-Cutting Concerns</span></a>
+      <a href="observability.html" class="active"><span class="nidx">14</span><span>Observability</span></a>
+      <a href="deployment.html"><span class="nidx">15</span><span>Deployment</span></a>
+      <a href="refactoring.html"><span class="nidx">16</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Category</a><span class="sep">/</span>Observability</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge">1 lesson</span> <span class="badge badge--diff">6 patterns</span></div>
+      <h1>Observability</h1>
+      <p class="page-sub">Understanding a running system: health checks, logs, metrics, tracing, exceptions, audit.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-observability"><h2 class="unit-title">Observability</h2><div class="tags"><span class="badge badge--pat">Health check API</span><span class="badge badge--pat">Log aggregation</span><span class="badge badge--pat">Distributed tracing</span><span class="badge badge--pat">Application metrics</span><span class="badge badge--pat">Exception tracking</span><span class="badge badge--pat">Audit logging</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A distributed system is opaque by default, so make each
+  service <em>observable</em> through six complementary patterns — health checks, aggregated logs, distributed tracing,
+  metrics, exception tracking and audit logging — so you can answer "is it healthy, what's it doing, and why did this
+  request fail?" across dozens of services.</div>
+  <div class="g-when">
+    <h5>Always — but especially when</h5>
+    <ul>
+      <li>A single request <strong>crosses many services</strong>.</li>
+      <li>You need to find <strong>which</strong> service in a chain failed or slowed.</li>
+      <li>You're running in production (and before you migrate off a monolith).</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Don't</h5>
+    <ul>
+      <li>Bolt observability on <em>after</em> decomposing — add it first.</li>
+      <li>Log without a <strong>correlation/trace id</strong> — logs become un-joinable.</li>
+      <li>Drown in dashboards no one watches; alert on symptoms users feel.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: where did the request go, and why is it slow?</h3>
+<p>When "place order" touches gateway → order → kitchen → accounting, a failure or latency spike could be anywhere. You
+can't SSH into one process and read a stack trace like you would with a monolith. You need the system to <em>emit</em> the
+signals that let you reconstruct what happened.</p>
+
+<h3>The pattern: six ways to see inside</h3>
+<p>Often summarised as the <strong>three pillars</strong> — metrics, logs, traces — plus three operational must-haves:</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Sub-pattern</th><th>Answers</th><th>Typical tech</th></tr></thead>
+<tbody>
+<tr><td><strong>Health check API</strong></td><td>Is this instance alive &amp; ready for traffic?</td><td>liveness/readiness endpoints; K8s probes</td></tr>
+<tr><td><strong>Log aggregation</strong></td><td>What happened? (searchable, centralised)</td><td>ELK / Grafana Loki</td></tr>
+<tr><td><strong>Distributed tracing</strong></td><td>What path did <em>this request</em> take, where was the time?</td><td>OpenTelemetry + Jaeger / Tempo / Zipkin</td></tr>
+<tr><td><strong>Application metrics</strong></td><td>How much, how fast, how many errors? (trends)</td><td>Prometheus + Grafana</td></tr>
+<tr><td><strong>Exception tracking</strong></td><td>What's crashing, deduped &amp; alerted?</td><td>Sentry</td></tr>
+<tr><td><strong>Audit logging</strong></td><td>Who did what, when? (compliance)</td><td>append-only audit store</td></tr>
+</tbody>
+</table></div>
+
+<figure class="arch">
+  <figcaption>Architecture — services emit signals to a collector, then to backends &amp; dashboards</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-name">Order</span></div>
+      <div class="node node--service"><span class="node-name">Kitchen</span></div>
+      <div class="node node--service"><span class="node-name">Delivery</span></div>
+    </div>
+    <div class="flow-arrow is-down"><span>OpenTelemetry (metrics·logs·traces)</span></div>
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Pipeline</span><span class="node-name">OTel Collector</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--db"><span class="node-kind">Metrics</span><span class="node-name">Prometheus</span></div>
+      <div class="node node--db"><span class="node-kind">Logs</span><span class="node-name">Loki / ELK</span></div>
+      <div class="node node--db"><span class="node-kind">Traces</span><span class="node-name">Jaeger / Tempo</span></div>
+    </div>
+    <div class="flow-arrow is-down"></div>
+    <div class="node node--client" style="align-self:center"><span class="node-kind">Visualise &amp; alert</span><span class="node-name">Grafana</span></div>
+  </div></div>
+</figure>
+
+<h3>How distributed tracing works</h3>
+<p>A trace follows one request across services. The gateway generates a <strong>traceId</strong>; each hop adds a
+<strong>span</strong> and propagates the id via headers (W3C Trace-Context). Stitched together, the spans show exactly
+where the time went and which service errored.</p>
+<figure class="diagram">
+<figcaption>One traceId, many spans, propagated across services</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant G as Gateway
+  participant O as Order
+  participant K as Kitchen
+  participant D as DB
+  Note over G,D: traceId=abc123 propagated in headers
+  G->>O: POST /orders [span 1]
+  O->>K: createTicket [span 2]
+  K->>D: INSERT ticket [span 3]
+  D-->>K: ok
+  K-->>O: ticket
+  O-->>G: order
+  Note over G,D: spans assembled into one timeline in Jaeger
+</pre>
+</figure>
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Correlate everything with one id</div>
+<p>Put the <code>traceId</code> into every log line. Now a single trace in Jaeger links straight to the exact logs from
+every service for that request — the difference between a 5-minute and a 5-hour incident.</p>
+</div></div>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · The "checkout is slow" page</span>
+<h4>Find the offending hop</h4>
+<p>A metrics dashboard shows checkout p99 latency spiking. You open a slow trace: the span breakdown reveals Pricing
+Service taking 1.8s on a DB call. The trace's logs (same <code>traceId</code>) show a missing index after a deploy. Three
+pillars, one diagnosis — without guessing.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>OpenTelemetry (OTel)</strong> — the CNCF vendor-neutral standard for emitting metrics/logs/traces; in
+  2025/26 it's the <em>baseline</em>, not optional. The <strong>OTel Collector</strong> receives, processes and routes
+  telemetry to any backend.</li>
+  <li><strong>Prometheus + Grafana</strong> (metrics/dashboards), <strong>Jaeger / Grafana Tempo / Zipkin</strong> (traces),
+  <strong>ELK / Grafana Loki</strong> (logs), <strong>Sentry</strong> (exceptions), <strong>Datadog</strong> (all-in-one SaaS).</li>
+  <li>Health checks integrate with <strong>Kubernetes</strong> liveness/readiness probes; a <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a>
+  can emit golden metrics &amp; traces with no app code.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>No correlation id</strong> — un-joinable logs; you can't follow a request.</li>
+<li><strong>Liveness probe that calls dependencies</strong> — a slow dependency triggers needless restarts; keep liveness
+local, put dependency checks in readiness.</li>
+<li><strong>Metric/label explosion</strong> — high-cardinality labels blow up Prometheus.</li>
+<li><strong>Alert fatigue</strong> — alert on user-visible symptoms (SLOs), not every twitch.</li>
+<li><strong>Logging secrets/PII</strong> — a compliance incident waiting to happen.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Make services observable via six patterns: <strong>health, logs, traces, metrics, exceptions, audit</strong>.</li>
+<li><strong>Distributed tracing</strong> + a shared <strong>correlation id</strong> are what make a request followable.</li>
+<li>Standardise on <strong>OpenTelemetry</strong>; route to Prometheus/Grafana/Jaeger/Loki.</li>
+<li>Add observability <em>before</em> decomposing; a <a href="../by-pattern/service-mesh-sidecar.html">mesh</a> and the <a href="../by-pattern/microservice-chassis.html">chassis</a> give a lot of it for free.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A request fails intermittently somewhere in a 5-service chain. Which observability pattern pinpoints <em>where</em>,
+and what makes it work?</p>
+<details><summary>Show answer</summary>
+<p><strong>Distributed tracing.</strong> A single <code>traceId</code> is generated at the edge and propagated (via
+headers) to every downstream service, each adding a span. The assembled trace shows the full path and timing, so you can
+see exactly which hop errored or slowed — something logs/metrics alone can't localise. Putting that traceId in logs lets
+you jump straight to the relevant log lines.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/microservice-chassis.html">Microservice chassis</a> · <a href="../by-pattern/service-mesh-sidecar.html">Service mesh &amp; sidecar</a> ·
+<a href="../by-pattern/api-gateway.html">API gateway</a> · <a href="../by-pattern/circuit-breaker.html">Circuit breaker</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="cross-cutting.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Cross-Cutting Concerns</span></a>
+      <a class="next" href="deployment.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Deployment</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

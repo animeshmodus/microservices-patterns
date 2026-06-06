@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Authenticating and authorising requests across a service graph with access tokens.">
+  <title>Security · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html" class="active"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Categories</div>
+    <nav class="nav">
+      <a href="application-architecture.html"><span class="nidx">01</span><span>Application Architecture</span></a>
+      <a href="decomposition.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="communication.html"><span class="nidx">03</span><span>Communication Styles</span></a>
+      <a href="reliability.html"><span class="nidx">04</span><span>Reliable Communication</span></a>
+      <a href="service-discovery.html"><span class="nidx">05</span><span>Service Discovery</span></a>
+      <a href="transactional-messaging.html"><span class="nidx">06</span><span>Transactional Messaging</span></a>
+      <a href="data-consistency.html"><span class="nidx">07</span><span>Data Consistency</span></a>
+      <a href="business-logic.html"><span class="nidx">08</span><span>Business Logic Design</span></a>
+      <a href="querying.html"><span class="nidx">09</span><span>Querying</span></a>
+      <a href="external-api.html"><span class="nidx">10</span><span>External API</span></a>
+      <a href="testing.html"><span class="nidx">11</span><span>Testing</span></a>
+      <a href="security.html" class="active"><span class="nidx">12</span><span>Security</span></a>
+      <a href="cross-cutting.html"><span class="nidx">13</span><span>Cross-Cutting Concerns</span></a>
+      <a href="observability.html"><span class="nidx">14</span><span>Observability</span></a>
+      <a href="deployment.html"><span class="nidx">15</span><span>Deployment</span></a>
+      <a href="refactoring.html"><span class="nidx">16</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Category</a><span class="sep">/</span>Security</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge">1 lesson</span> <span class="badge badge--diff">1 patterns</span></div>
+      <h1>Security</h1>
+      <p class="page-sub">Authenticating and authorising requests across a service graph with access tokens.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-security-access-token"><h2 class="unit-title">Microservice Security &amp; Access Token</h2><div class="tags"><span class="badge badge--pat">Access token</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Authenticate the user once at the edge (the
+  <a href="../by-pattern/api-gateway.html">API gateway</a>), then pass a signed, self-contained <em>access token</em> (a JWT) to and
+  between services, so each service can verify identity and authorise the request without a shared session or calling back
+  to a login server.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>Requests flow through <strong>many services</strong> that all need identity.</li>
+      <li>You can't replicate server-side <strong>session state</strong> everywhere.</li>
+      <li>You want stateless, scalable <strong>authorisation</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You validate that a token <em>exists</em> but not its <strong>issuer/audience/expiry/scope</strong>.</li>
+      <li>Tokens are <strong>long-lived</strong> (hard to revoke).</li>
+      <li>You forget service-to-service auth (<strong>mTLS</strong>).</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: security can't rely on a shared session</h3>
+<p>In a monolith, an in-memory session handled auth for the whole request. Across services there's no shared session, and
+making every service call a central auth server on every hop is slow and couples everyone to it. We need identity to
+travel <em>with</em> the request and be verifiable independently.</p>
+
+<h3>The pattern: authenticate at the edge, carry a token</h3>
+<p>The gateway authenticates the client (via <strong>OAuth 2.0 / OpenID Connect</strong>) and forwards a signed
+<strong>access token</strong> — typically a <strong>JWT</strong> containing identity and scopes — to downstream services.
+Each service verifies the token's signature and claims locally and authorises accordingly. No shared session, no callback.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — edge authentication + token propagation</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--client"><span class="node-kind">User</span><span class="node-name">Client</span></div>
+      <div class="flow-arrow is-bi"><span>login (OIDC)</span></div>
+      <div class="node node--ext"><span class="node-kind">Identity</span><span class="node-name">Auth Server</span><span class="node-sub">issues JWT</span></div>
+    </div>
+    <div class="flow-arrow is-down"><span>request + Bearer JWT</span></div>
+    <div class="arch-flow">
+      <div class="node node--gateway"><span class="node-kind">Edge</span><span class="node-name">API Gateway</span><span class="node-sub">validate JWT (JWKS)</span></div>
+      <div class="flow-arrow"><span>forward token / mTLS</span></div>
+      <div class="arch-group" data-label="Services verify JWT + authorise by scope">
+        <div class="node node--service"><span class="node-name">Order</span></div>
+        <div class="node node--service"><span class="node-name">Accounting</span></div>
+      </div>
+    </div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Sequence — login, token, propagation, verification</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as Client
+  participant A as Auth Server (OIDC)
+  participant G as API Gateway
+  participant S as Order Service
+  U->>A: authenticate (OAuth2 / OIDC)
+  A-->>U: access token (JWT, short-lived) + refresh token
+  U->>G: GET /orders (Authorization: Bearer JWT)
+  G->>G: verify signature via JWKS; check iss, aud, exp, scope
+  G->>S: forward request + token (mTLS)
+  S->>S: re-verify JWT; authorise by scope/role
+  S-->>U: 200 OK
+</pre>
+</figure>
+
+<h3>How it works — the modern stack</h3>
+<ul>
+  <li><strong>OAuth 2.0</strong> handles delegated authorisation; <strong>OpenID Connect (OIDC)</strong> adds the identity
+  layer (login/SSO) on top.</li>
+  <li><strong>JWT</strong> access tokens are self-contained (claims like <code>sub</code>, <code>scope</code>,
+  <code>exp</code>) and verified by checking the signature against the auth server's public keys (<strong>JWKS</strong>) —
+  no DB lookup.</li>
+  <li><strong>Short expiry</strong> (minutes) limits the blast radius of a leaked token; refresh tokens get new ones.</li>
+  <li><strong>Service-to-service:</strong> use <strong>mTLS</strong> for mutual machine identity (zero-trust), often with
+  <strong>SPIFFE/SPIRE</strong> issuing short-lived workload certificates — frequently handled by a
+  <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a>.</li>
+  <li><strong>Token exchange</strong> (RFC 8693) safely narrows/delegates a token as it moves deeper into the graph.</li>
+</ul>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Scoped access on a money path</span>
+<h4>Only "payments:write" may charge a card</h4>
+<p>A user's JWT carries <code>scope: "orders:read orders:write"</code> but not <code>payments:write</code>. The gateway
+validates the token; Accounting Service, asked to charge a card, checks the scope and rejects — defence in depth, enforced
+locally by the service that owns the risk, without a central authorisation call.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li>Identity providers: <strong>Keycloak</strong> (OSS), <strong>Auth0</strong>, <strong>Okta</strong>, <strong>AWS
+  Cognito</strong>, <strong>Azure AD/Entra</strong>, <strong>IdentityServer</strong> (.NET).</li>
+  <li>The 2025 production norm: <em>gateway/BFF + OAuth2/OIDC + JWT + mTLS inside the mesh</em>, with SPIFFE/SPIRE for
+  workload identity in zero-trust designs.</li>
+  <li>The <strong>BFF pattern</strong> is increasingly used to keep tokens out of the browser (server-side session at the
+  BFF, tokens never exposed to JavaScript).</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Shallow validation</strong> — accepting any well-formed JWT without checking <code>iss</code>,
+<code>aud</code>, <code>exp</code> and <code>scope</code>. The #1 gateway security gap.</li>
+<li><strong>Long-lived tokens</strong> — hard to revoke; keep them short and use refresh tokens.</li>
+<li><strong>Trusting the network</strong> — no service-to-service auth; an intruder inside the perimeter roams freely. Use mTLS.</li>
+<li><strong>Secrets in code/images</strong> — keep keys/credentials in a secret store (see <a href="../by-pattern/externalized-configuration.html">externalized configuration</a>).</li>
+<li><strong>Tokens in the browser</strong> exposed to XSS — prefer the BFF/server-side-session approach.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Authenticate <strong>once at the edge</strong>; carry a signed <strong>JWT access token</strong> through the graph.</li>
+<li>Use <strong>OAuth2/OIDC</strong>; verify <strong>signature + iss/aud/exp/scope</strong> at every service.</li>
+<li>Keep tokens <strong>short-lived</strong>; secure service-to-service calls with <strong>mTLS</strong> (SPIFFE/SPIRE).</li>
+<li>The <a href="../by-pattern/api-gateway.html">gateway</a>/<a href="../by-pattern/bff.html">BFF</a> is the natural place to authenticate; a <a href="../by-pattern/service-mesh-sidecar.html">mesh</a> can enforce mTLS for free.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is a self-contained JWT preferable to having each service call the auth server to validate a session on every
+request?</p>
+<details><summary>Show answer</summary>
+<p>A JWT is verified <em>locally</em> by checking its signature against the auth server's published public keys (JWKS) and
+inspecting its claims — no network call per hop. That keeps services decoupled from the auth server, removes it as a
+per-request bottleneck/SPOF, and scales statelessly. The trade-off (harder revocation) is managed with short expiry +
+refresh tokens.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/api-gateway.html">API gateway</a> · <a href="../by-pattern/bff.html">Backends for Frontends</a> ·
+<a href="../by-pattern/service-mesh-sidecar.html">Service mesh &amp; sidecar</a> · <a href="../by-pattern/externalized-configuration.html">Externalized configuration</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="testing.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Testing</span></a>
+      <a class="next" href="cross-cutting.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Cross-Cutting Concerns</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

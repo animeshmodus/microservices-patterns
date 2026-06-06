@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A single entry point that routes, aggregates and offloads cross-cutting concerns for external clients.">
+  <title>API Gateway · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html" class="active"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>API Gateway</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/external-api.html">External API</a> <a class="badge badge--ch" href="../by-chapter/ch08.html">Chapter 8</a></div>
+      <h1>API Gateway</h1>
+      <p class="page-sub">A single entry point that routes, aggregates and offloads cross-cutting concerns for external clients.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-api-gateway"><div class="tags"><span class="badge badge--pat">API gateway</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> An API gateway is a single entry point that sits between
+  external clients and your services — it routes each request to the right service, can aggregate several calls into one,
+  translates protocols, and handles cross-cutting concerns like authentication, rate limiting and TLS.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>External clients (mobile, web, partners) need to talk to <strong>many fine-grained services</strong>.</li>
+      <li>You want to hide internal topology and <strong>decouple clients</strong> from service decomposition.</li>
+      <li>Cross-cutting concerns (auth, throttling, TLS) should be handled <strong>in one place</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Avoid / be careful when</h4>
+    <ul>
+      <li>You have a single client and a couple of services — the gateway is overhead.</li>
+      <li>You're tempted to put <strong>business logic</strong> in it (that's the road to a new monolith).</li>
+      <li>You can't make it <strong>highly available</strong> — it becomes a single point of failure.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: clients shouldn't talk to 30 services directly</h2>
+<p>Once a system is decomposed, a single screen often needs data from many services. The FTGO mobile app's "order
+details" view needs the order, the restaurant, the delivery status and the bill — spread across four services. If the
+client calls each service directly, you get real problems:</p>
+<ul>
+  <li><strong>Chatty, high-latency clients.</strong> A mobile device on a flaky network making many round-trips is slow
+  and battery-hungry.</li>
+  <li><strong>Tight coupling.</strong> Clients now know your internal service URLs and decomposition; refactoring a
+  service breaks every client.</li>
+  <li><strong>Protocol mismatch.</strong> Internal services may speak <a href="rpi.html">gRPC or AMQP</a>, but a browser
+  wants JSON over HTTP.</li>
+  <li><strong>Duplicated concerns.</strong> Auth, rate limiting and TLS would have to be re-implemented per client/service.</li>
+</ul>
+
+<h2>The pattern: a single, smart front door</h2>
+<p>Introduce one service — the API gateway — that is the single entry point for all external requests. It is
+responsible for <strong>request routing</strong>, <strong>API composition</strong> (calling several services and
+combining results), and <strong>protocol translation</strong>, and it <em>offloads</em> cross-cutting concerns.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — the API gateway as the system's front door</figcaption>
+  <div class="arch-canvas">
+    <div class="arch-stack">
+      <div class="arch-flow">
+        <div class="node node--client"><span class="node-kind">Client</span><span class="node-name">Mobile app</span></div>
+        <div class="node node--client"><span class="node-kind">Client</span><span class="node-name">Web SPA</span></div>
+        <div class="node node--client"><span class="node-kind">Client</span><span class="node-name">Partner API</span></div>
+      </div>
+      <div class="flow-arrow is-down"><span>HTTPS / JSON</span></div>
+      <div class="arch-flow">
+        <div class="node node--gateway"><span class="node-kind">Edge</span><span class="node-name">API Gateway</span><span class="node-sub">route · aggregate · authn · rate-limit · TLS</span></div>
+        <div class="flow-arrow is-bi"><span>validate token</span></div>
+        <div class="node node--ext"><span class="node-kind">Identity</span><span class="node-name">Auth server (OIDC)</span></div>
+      </div>
+      <div class="flow-arrow is-down"><span>REST / gRPC (internal)</span></div>
+      <div class="arch-group" data-label="Internal services">
+        <div class="node node--service"><span class="node-name">Order</span></div>
+        <div class="node node--service"><span class="node-name">Restaurant</span></div>
+        <div class="node node--service"><span class="node-name">Delivery</span></div>
+        <div class="node node--service"><span class="node-name">Accounting</span></div>
+      </div>
+    </div>
+    <div class="arch-legend">
+      <span class="chip chip--client">Client</span>
+      <span class="chip chip--gateway">Gateway</span>
+      <span class="chip chip--service">Service</span>
+      <span class="chip chip--ext">External / identity</span>
+    </div>
+  </div>
+</figure>
+
+<h2>How it works</h2>
+<p>A gateway has four core jobs. The first three are request-handling; the fourth is "edge functions" it performs on
+every request.</p>
+<ol>
+  <li><strong>Routing.</strong> Map an external path (<code>GET /orders/123</code>) to an internal service. A pure
+  reverse-proxy gateway does only this.</li>
+  <li><strong>API composition.</strong> For coarse-grained client needs, the gateway invokes several services and
+  combines the results — an application of the <a href="api-composition.html">API composition</a> pattern.</li>
+  <li><strong>Protocol translation.</strong> Expose REST/GraphQL to the outside while talking gRPC/messaging inside.</li>
+  <li><strong>Edge offloading.</strong> Authentication, authorisation, rate limiting, caching, TLS termination,
+  request/response logging and metrics — done once, for everyone.</li>
+</ol>
+
+<figure class="diagram">
+<figcaption>Sequence — gateway composes an "order details" response from four services in parallel</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant M as Mobile App
+  participant G as API Gateway
+  participant O as Order Service
+  participant R as Restaurant Service
+  participant D as Delivery Service
+  participant B as Accounting Service
+  M->>G: GET /orders/123 (Bearer token)
+  G->>G: validate token, check rate limit
+  par fan-out in parallel
+    G->>O: getOrder(123)
+    G->>R: getRestaurant(...)
+    G->>D: getDelivery(123)
+    G->>B: getBill(123)
+  end
+  O-->>G: order
+  R-->>G: restaurant
+  D-->>G: delivery status
+  B-->>G: bill
+  G->>G: merge into one response
+  G-->>M: 200 OK {order, restaurant, delivery, bill}
+</pre>
+</figure>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">Gateway vs. Backends for Frontends</div>
+<p>One generic gateway serving every client tends to bloat. The <a href="bff.html">Backends for Frontends (BFF)</a>
+variation gives <em>each client type its own gateway</em> (mobile BFF, web BFF, partner BFF), each owned by that
+client's team. Same idea, better ownership and tailoring. Start with one gateway; split into BFFs when teams collide.</p>
+</div></div>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · FTGO mobile</span>
+<h3>One round-trip instead of four</h3>
+<p>The mobile "order status" screen needs four services. The gateway exposes a single coarse-grained
+<code>GET /orders/{id}</code> that fans out, joins, and returns one payload — turning four mobile round-trips into one,
+with partial-failure handling (return <code>delivery: null</code> if Delivery times out rather than failing the screen).</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce</span>
+<h3>Product page aggregation + per-consumer rate limits</h3>
+<p>A product page composes catalog, pricing, inventory and ratings. The gateway aggregates them and applies a tighter
+rate limit on the <code>/payment</code> route than on <code>/catalog</code>, validating the JWT once and forwarding a
+trusted <code>X-User-Id</code> header downstream.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · Banking / open APIs</span>
+<h3>Partner platform with OAuth2 and audit</h3>
+<p>A bank fronts all partner-facing APIs with a managed gateway (e.g. Apigee). Partners register apps, get API keys,
+are throttled per plan, authenticate via OAuth2 client-credentials, and every call is logged for compliance — none of
+which touches the internal services.</p>
+</div>
+
+<h2>Trade-offs</h2>
+<div class="tradeoffs">
+  <div class="pros"><h4>Benefits</h4><ul>
+    <li>Encapsulates internal structure; clients are decoupled from decomposition.</li>
+    <li>Reduces round-trips and tailors APIs per client.</li>
+    <li>One place for auth, throttling, TLS, observability.</li>
+    <li>Protocol translation lets you use the best internal protocol.</li>
+  </ul></div>
+  <div class="cons"><h4>Drawbacks</h4><ul>
+    <li>One more highly-available component to build, deploy and operate.</li>
+    <li>Can become a development <strong>bottleneck</strong> if every team must edit it.</li>
+    <li>Risk of becoming a "god service" full of business logic.</li>
+    <li>Adds a network hop (mitigated by parallel fan-out + caching).</li>
+  </ul></div>
+</div>
+
+<h2>In the wild — tooling &amp; who uses it</h2>
+<ul>
+  <li><strong>Kong</strong> — open-source/enterprise, plugin-based (auth, rate-limit, logging); used by large enterprises.</li>
+  <li><strong>Spring Cloud Gateway</strong> — reactive JVM gateway; predicate + filter routes; integrates with Spring Security.</li>
+  <li><strong>AWS API Gateway</strong> / <strong>Azure API Management</strong> / <strong>Google Apigee</strong> — fully
+  managed gateways with throttling, developer portals and (for Apigee) API monetisation used by major banks.</li>
+  <li><strong>Envoy</strong> — the L7 proxy under many modern gateways and ingress controllers (Gloo, Contour, Emissary).</li>
+  <li><strong>Netflix Zuul</strong> — the historically important gateway; Zuul 2 went async on Netty. Largely superseded
+  by Envoy-based stacks in new builds.</li>
+  <li><strong>GraphQL</strong> (Apollo Federation, Netflix DGS) — a modern way to implement a composing gateway/BFF where
+  each client asks for exactly the fields it needs.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>The "god gateway".</strong> Accumulating routing + transformation + orchestration + business rules rebuilds a
+monolith at the edge.</li>
+<li><strong>Single point of failure.</strong> One un-clustered instance with no health checks/auto-scaling is your
+system's weakest link.</li>
+<li><strong>Auth done twice or not enough.</strong> Validating that a token merely <em>exists</em> without checking
+issuer, audience, expiry and scopes is a common security gap.</li>
+<li><strong>Deployment coupling.</strong> If adding any endpoint needs a manual gateway change, the gateway becomes an
+org-wide bottleneck — prefer declarative, version-controlled routes.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>The gateway is the system's <strong>front door</strong>: route, compose, translate, and offload edge concerns.</li>
+<li>Keep it <strong>thin</strong> — coordination and cross-cutting concerns only, never domain logic.</li>
+<li>Make it <strong>highly available</strong>; it's on the critical path of every request.</li>
+<li>When one gateway serves clashing clients, split into <a href="bff.html">BFFs</a>.</li>
+<li>It naturally hosts <a href="security-access-token.html">token validation</a>, <a href="circuit-breaker.html">circuit breakers</a> and <a href="api-composition.html">API composition</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A teammate proposes putting the "calculate loyalty discount" rule into the API gateway because "all clients need it".
+Why push back?</p>
+<details><summary>Show answer</summary>
+<p>That's business logic. It belongs in a service (owned by a team, testable, reusable by <em>all</em> entry points
+including async flows). Putting it in the gateway couples a domain rule to the edge, makes the gateway a shared
+bottleneck every team must edit, and means non-gateway callers silently miss the rule. The gateway should
+<em>route to</em> the service that owns the rule, not own it.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="bff.html">Backends for Frontends</a> ·
+<a href="api-composition.html">API composition</a> · <a href="security-access-token.html">Access token</a> ·
+<a href="rpi.html">Remote procedure invocation</a> · <a href="circuit-breaker.html">Circuit breaker</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="cqrs.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">CQRS</span></a>
+      <a class="next" href="bff.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Backends for Frontends (BFF)</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

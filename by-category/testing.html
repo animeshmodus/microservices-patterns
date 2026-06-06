@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Testing services in isolation and trusting their integrations — contract &amp; component tests.">
+  <title>Testing · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html" class="active"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Categories</div>
+    <nav class="nav">
+      <a href="application-architecture.html"><span class="nidx">01</span><span>Application Architecture</span></a>
+      <a href="decomposition.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="communication.html"><span class="nidx">03</span><span>Communication Styles</span></a>
+      <a href="reliability.html"><span class="nidx">04</span><span>Reliable Communication</span></a>
+      <a href="service-discovery.html"><span class="nidx">05</span><span>Service Discovery</span></a>
+      <a href="transactional-messaging.html"><span class="nidx">06</span><span>Transactional Messaging</span></a>
+      <a href="data-consistency.html"><span class="nidx">07</span><span>Data Consistency</span></a>
+      <a href="business-logic.html"><span class="nidx">08</span><span>Business Logic Design</span></a>
+      <a href="querying.html"><span class="nidx">09</span><span>Querying</span></a>
+      <a href="external-api.html"><span class="nidx">10</span><span>External API</span></a>
+      <a href="testing.html" class="active"><span class="nidx">11</span><span>Testing</span></a>
+      <a href="security.html"><span class="nidx">12</span><span>Security</span></a>
+      <a href="cross-cutting.html"><span class="nidx">13</span><span>Cross-Cutting Concerns</span></a>
+      <a href="observability.html"><span class="nidx">14</span><span>Observability</span></a>
+      <a href="deployment.html"><span class="nidx">15</span><span>Deployment</span></a>
+      <a href="refactoring.html"><span class="nidx">16</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Category</a><span class="sep">/</span>Testing</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge">1 lesson</span> <span class="badge badge--diff">3 patterns</span></div>
+      <h1>Testing</h1>
+      <p class="page-sub">Testing services in isolation and trusting their integrations — contract &amp; component tests.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-contract-testing"><h2 class="unit-title">Contract &amp; Component Testing</h2><div class="tags"><span class="badge badge--pat">Consumer-driven contract test</span><span class="badge badge--pat">Consumer-side contract test</span><span class="badge badge--pat">Service component test</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Instead of slow, brittle end-to-end tests that spin up the
+  whole system, you test each service in isolation and trust its integrations via <em>consumer-driven contract tests</em>
+  (the consumer writes the expectations, the provider proves it meets them) plus <em>component tests</em> (the service
+  tested alone with its collaborators stubbed).</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>You have many services and <strong>E2E tests are slow/flaky</strong>.</li>
+      <li>You want fast feedback that a change <strong>won't break consumers</strong>.</li>
+      <li>Teams deploy independently and need confidence at the boundary.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You rely <strong>only</strong> on E2E tests (slow, hard to diagnose).</li>
+      <li>Contracts drift from reality because they aren't run in CI.</li>
+      <li>You skip the cheap unit tests at the base of the pyramid.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: end-to-end testing doesn't scale</h3>
+<p>Verifying behaviour by deploying every service and running tests through the whole stack is slow, expensive, flaky,
+and — when it fails — hard to diagnose. With dozens of independently deployed services, you need confidence at the
+<em>boundaries</em> without assembling the entire system every time.</p>
+
+<h3>The microservices test pyramid</h3>
+<p>Push tests down the pyramid: many fast <strong>unit</strong> tests, fewer <strong>integration</strong> and
+<strong>contract</strong> tests, fewer still <strong>component</strong> tests (one service in isolation), and a thin layer
+of <strong>end-to-end</strong> tests for critical journeys only.</p>
+<figure class="arch">
+  <figcaption>The test pyramid — most tests cheap &amp; fast, few slow &amp; broad</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--ext" style="align-self:center;max-width:240px"><span class="node-kind">Few · slow</span><span class="node-name">End-to-end</span></div>
+    <div class="node node--gateway" style="align-self:center;max-width:300px"><span class="node-kind">Component</span><span class="node-name">Service tested in isolation</span></div>
+    <div class="node node--broker" style="align-self:center;max-width:360px"><span class="node-kind">Integration / Contract</span><span class="node-name">Boundaries verified</span></div>
+    <div class="node node--service" style="align-self:center;max-width:420px"><span class="node-kind">Many · fast</span><span class="node-name">Unit tests (entities, value objects, sagas)</span></div>
+  </div></div>
+</figure>
+
+<h3>The pattern: consumer-driven contract tests</h3>
+<p>A <strong>contract</strong> captures how a consumer expects a provider's API to behave. The <em>consumer</em> writes
+the expectation (in its own test, producing the contract); the <em>provider</em> replays that contract against the real
+provider to prove it complies. If the provider ever breaks the contract, the provider's build fails — before deployment.</p>
+
+<figure class="diagram">
+<figcaption>Sequence — consumer defines the contract, provider verifies it</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Co as Consumer (Order Svc test)
+  participant Br as Contract (Pact broker)
+  participant Pr as Provider (Kitchen Svc)
+  Co->>Co: define expected request &amp; response
+  Co->>Br: publish contract
+  Pr->>Br: fetch contracts from my consumers
+  Pr->>Pr: replay each against the real provider
+  Pr-->>Br: results (verified or FAILED build)
+</pre>
+</figure>
+<ul>
+  <li><strong>Consumer-side contract test</strong> — verifies the consumer's client code against a stub built from the
+  contract.</li>
+  <li><strong>Provider-side verification</strong> — verifies the real provider satisfies all its consumers' contracts.</li>
+  <li><strong>Service component test</strong> — tests one service end-to-end <em>in isolation</em>, with its dependencies
+  replaced by stubs (often written as Gherkin acceptance scenarios).</li>
+</ul>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Catching a breaking change in CI</span>
+<h4>Provider renames a field</h4>
+<p>Kitchen Service renames <code>ticketId</code> to <code>id</code>. Order Service's published contract still expects
+<code>ticketId</code>, so Kitchen's contract-verification step fails in CI — the breaking change is caught
+<em>before</em> deployment, not in a 2 a.m. production incident. No full E2E environment was needed.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>Pact</strong> — the leading consumer-driven contract tool: <em>code-first</em>, the consumer test generates
+  a language-neutral JSON contract, shared via a <em>Pact Broker</em>; works across Java, JS, .NET, Go, etc.</li>
+  <li><strong>Spring Cloud Contract</strong> — JVM-centric; contracts are written (Groovy/YAML) and used to generate both
+  provider tests and consumer stubs (started provider-driven).</li>
+  <li><strong>Gherkin</strong> (Cucumber) — expresses component/acceptance tests in business language.</li>
+</ul>
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Pact vs Spring Cloud Contract</div>
+<p>Choose <strong>Pact</strong> for polyglot, truly consumer-driven workflows (contract generated <em>by</em> the consumer
+test). Choose <strong>Spring Cloud Contract</strong> if you're all-JVM and like hand-written contracts that also generate
+stubs. Both shift integration bugs "left", out of staging and prod.</p>
+</div></div>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>E2E-only testing</strong> — slow, flaky, vague failures; keep E2E thin.</li>
+<li><strong>Contracts not in CI</strong> — a contract nobody runs rots and lies.</li>
+<li><strong>Over-specified contracts</strong> — asserting on incidental fields makes them brittle; assert what you use.</li>
+<li><strong>Skipping the pyramid base</strong> — contract tests don't replace unit tests of your domain logic.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Favour the <strong>pyramid</strong>: lots of unit + contract + component tests, few E2E.</li>
+<li><strong>Consumer-driven contracts</strong> let providers and consumers deploy independently with confidence.</li>
+<li><strong>Component tests</strong> verify a service alone with stubbed collaborators — fast and deterministic.</li>
+<li>Tools: <strong>Pact</strong> (polyglot, consumer-driven), <strong>Spring Cloud Contract</strong> (JVM).</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>How does a consumer-driven contract test catch a breaking provider change <em>without</em> deploying both services
+together?</p>
+<details><summary>Show answer</summary>
+<p>The consumer's expectations are captured as a contract and stored centrally. The provider's CI pipeline replays every
+consumer contract against the <em>real</em> provider build in isolation. If the provider no longer satisfies a contract,
+its build fails immediately — so the incompatibility is detected at the boundary, in CI, with no shared end-to-end
+environment and no waiting for an integration deploy.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/rpi.html">Remote procedure invocation</a> · <a href="../by-pattern/messaging.html">Asynchronous messaging</a> ·
+<a href="../by-pattern/deployment-patterns.html">Deployment</a> · <a href="../by-pattern/microservice-chassis.html">Microservice chassis</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="external-api.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">External API</span></a>
+      <a class="next" href="security.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Security</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

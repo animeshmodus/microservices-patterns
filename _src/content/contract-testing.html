@@ -1,0 +1,128 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Instead of slow, brittle end-to-end tests that spin up the
+  whole system, you test each service in isolation and trust its integrations via <em>consumer-driven contract tests</em>
+  (the consumer writes the expectations, the provider proves it meets them) plus <em>component tests</em> (the service
+  tested alone with its collaborators stubbed).</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You have many services and <strong>E2E tests are slow/flaky</strong>.</li>
+      <li>You want fast feedback that a change <strong>won't break consumers</strong>.</li>
+      <li>Teams deploy independently and need confidence at the boundary.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You rely <strong>only</strong> on E2E tests (slow, hard to diagnose).</li>
+      <li>Contracts drift from reality because they aren't run in CI.</li>
+      <li>You skip the cheap unit tests at the base of the pyramid.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: end-to-end testing doesn't scale</h2>
+<p>Verifying behaviour by deploying every service and running tests through the whole stack is slow, expensive, flaky,
+and — when it fails — hard to diagnose. With dozens of independently deployed services, you need confidence at the
+<em>boundaries</em> without assembling the entire system every time.</p>
+
+<h2>The microservices test pyramid</h2>
+<p>Push tests down the pyramid: many fast <strong>unit</strong> tests, fewer <strong>integration</strong> and
+<strong>contract</strong> tests, fewer still <strong>component</strong> tests (one service in isolation), and a thin layer
+of <strong>end-to-end</strong> tests for critical journeys only.</p>
+<figure class="arch">
+  <figcaption>The test pyramid — most tests cheap &amp; fast, few slow &amp; broad</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--ext" style="align-self:center;max-width:240px"><span class="node-kind">Few · slow</span><span class="node-name">End-to-end</span></div>
+    <div class="node node--gateway" style="align-self:center;max-width:300px"><span class="node-kind">Component</span><span class="node-name">Service tested in isolation</span></div>
+    <div class="node node--broker" style="align-self:center;max-width:360px"><span class="node-kind">Integration / Contract</span><span class="node-name">Boundaries verified</span></div>
+    <div class="node node--service" style="align-self:center;max-width:420px"><span class="node-kind">Many · fast</span><span class="node-name">Unit tests (entities, value objects, sagas)</span></div>
+  </div></div>
+</figure>
+
+<h2>The pattern: consumer-driven contract tests</h2>
+<p>A <strong>contract</strong> captures how a consumer expects a provider's API to behave. The <em>consumer</em> writes
+the expectation (in its own test, producing the contract); the <em>provider</em> replays that contract against the real
+provider to prove it complies. If the provider ever breaks the contract, the provider's build fails — before deployment.</p>
+
+<figure class="diagram">
+<figcaption>Sequence — consumer defines the contract, provider verifies it</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Co as Consumer (Order Svc test)
+  participant Br as Contract (Pact broker)
+  participant Pr as Provider (Kitchen Svc)
+  Co->>Co: define expected request &amp; response
+  Co->>Br: publish contract
+  Pr->>Br: fetch contracts from my consumers
+  Pr->>Pr: replay each against the real provider
+  Pr-->>Br: results (verified or FAILED build)
+</pre>
+</figure>
+<ul>
+  <li><strong>Consumer-side contract test</strong> — verifies the consumer's client code against a stub built from the
+  contract.</li>
+  <li><strong>Provider-side verification</strong> — verifies the real provider satisfies all its consumers' contracts.</li>
+  <li><strong>Service component test</strong> — tests one service end-to-end <em>in isolation</em>, with its dependencies
+  replaced by stubs (often written as Gherkin acceptance scenarios).</li>
+</ul>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Catching a breaking change in CI</span>
+<h3>Provider renames a field</h3>
+<p>Kitchen Service renames <code>ticketId</code> to <code>id</code>. Order Service's published contract still expects
+<code>ticketId</code>, so Kitchen's contract-verification step fails in CI — the breaking change is caught
+<em>before</em> deployment, not in a 2 a.m. production incident. No full E2E environment was needed.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Pact</strong> — the leading consumer-driven contract tool: <em>code-first</em>, the consumer test generates
+  a language-neutral JSON contract, shared via a <em>Pact Broker</em>; works across Java, JS, .NET, Go, etc.</li>
+  <li><strong>Spring Cloud Contract</strong> — JVM-centric; contracts are written (Groovy/YAML) and used to generate both
+  provider tests and consumer stubs (started provider-driven).</li>
+  <li><strong>Gherkin</strong> (Cucumber) — expresses component/acceptance tests in business language.</li>
+</ul>
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Pact vs Spring Cloud Contract</div>
+<p>Choose <strong>Pact</strong> for polyglot, truly consumer-driven workflows (contract generated <em>by</em> the consumer
+test). Choose <strong>Spring Cloud Contract</strong> if you're all-JVM and like hand-written contracts that also generate
+stubs. Both shift integration bugs "left", out of staging and prod.</p>
+</div></div>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>E2E-only testing</strong> — slow, flaky, vague failures; keep E2E thin.</li>
+<li><strong>Contracts not in CI</strong> — a contract nobody runs rots and lies.</li>
+<li><strong>Over-specified contracts</strong> — asserting on incidental fields makes them brittle; assert what you use.</li>
+<li><strong>Skipping the pyramid base</strong> — contract tests don't replace unit tests of your domain logic.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Favour the <strong>pyramid</strong>: lots of unit + contract + component tests, few E2E.</li>
+<li><strong>Consumer-driven contracts</strong> let providers and consumers deploy independently with confidence.</li>
+<li><strong>Component tests</strong> verify a service alone with stubbed collaborators — fast and deterministic.</li>
+<li>Tools: <strong>Pact</strong> (polyglot, consumer-driven), <strong>Spring Cloud Contract</strong> (JVM).</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>How does a consumer-driven contract test catch a breaking provider change <em>without</em> deploying both services
+together?</p>
+<details><summary>Show answer</summary>
+<p>The consumer's expectations are captured as a contract and stored centrally. The provider's CI pipeline replays every
+consumer contract against the <em>real</em> provider build in isolation. If the provider no longer satisfies a contract,
+its build fails immediately — so the incompatibility is detected at the boundary, in CI, with no shared end-to-end
+environment and no waiting for an integration deploy.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:rpi">Remote procedure invocation</a> · <a href="ref:messaging">Asynchronous messaging</a> ·
+<a href="ref:deployment-patterns">Deployment</a> · <a href="ref:microservice-chassis">Microservice chassis</a></p>

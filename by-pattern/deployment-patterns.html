@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Four ways to run a service: language package, VM, container/Kubernetes, and serverless functions.">
+  <title>Deployment: Containers, Kubernetes &amp; Serverless · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html" class="active"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Deployment: Containers, Kubernetes &amp; Serverless</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/deployment.html">Deployment</a> <a class="badge badge--ch" href="../by-chapter/ch12.html">Chapter 12</a></div>
+      <h1>Deployment: Containers, Kubernetes &amp; Serverless</h1>
+      <p class="page-sub">Four ways to run a service: language package, VM, container/Kubernetes, and serverless functions.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-deployment-patterns"><div class="tags"><span class="badge badge--pat">Deploy a service as a container</span><span class="badge badge--pat">Deploy a service as a VM</span><span class="badge badge--pat">Language-specific packaging format</span><span class="badge badge--pat">Serverless deployment</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> There are four ways to package and run a service —
+  as a <em>language-specific package</em>, in its own <em>virtual machine</em>, in a <em>container</em> (orchestrated by
+  Kubernetes), or as <em>serverless functions</em> — trading isolation, startup speed, resource efficiency and operational
+  burden against each other.</div>
+  <div class="g-when">
+    <h4>Default choice today</h4>
+    <ul>
+      <li><strong>Containers + Kubernetes</strong> for most long-running services.</li>
+      <li><strong>Serverless</strong> for event-driven, spiky, or glue workloads.</li>
+      <li><strong>VM</strong> for hard isolation / special hardware; <strong>package</strong> for legacy/simple cases.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You treat containers like VMs (SSH in, local state).</li>
+      <li>You underestimate <strong>Kubernetes</strong> operational complexity.</li>
+      <li>Serverless <strong>cold starts</strong> sit on a latency-critical path.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: independently deployable means deployable <em>how</em>?</h2>
+<p>Microservices promise frequent, independent deployment — but only if packaging and runtime make that cheap, fast and
+safe. The choice shapes startup time, isolation, density, cost and how much platform you must operate.</p>
+
+<h2>The four patterns</h2>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Pattern</th><th>Isolation</th><th>Startup</th><th>Efficiency</th><th>Ops burden</th><th>Best fit</th></tr></thead>
+<tbody>
+<tr><td><strong>Language package</strong> (JAR/WAR)</td><td>Process</td><td>Seconds</td><td>Low (shared host)</td><td>Low</td><td>Legacy/simple JVM apps</td></tr>
+<tr><td><strong>Virtual machine</strong></td><td>Hardware</td><td>Minutes</td><td>Low (idle VMs)</td><td>Medium</td><td>Hard isolation, GPUs, compliance</td></tr>
+<tr><td><strong>Container</strong> (Docker+K8s)</td><td>Kernel namespace</td><td>Seconds</td><td>High (bin-packing)</td><td>High (K8s)</td><td>General microservices</td></tr>
+<tr><td><strong>Serverless</strong> (Lambda…)</td><td>Per-invocation</td><td>ms–seconds (cold starts)</td><td>Highest (scale-to-zero)</td><td>Low–Medium</td><td>Event-driven, bursty</td></tr>
+</tbody>
+</table></div>
+
+<figure class="arch">
+  <figcaption>Architecture — a container per service, scheduled across a Kubernetes cluster</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Orchestrator</span><span class="node-name">Kubernetes control plane</span></div>
+    <div class="flow-arrow is-down"><span>schedules pods</span></div>
+    <div class="arch-flow">
+      <div class="arch-group" data-label="Node 1">
+        <div class="node node--service"><span class="node-name">Order ×3</span></div>
+        <div class="node node--service"><span class="node-name">Kitchen ×2</span></div>
+      </div>
+      <div class="arch-group" data-label="Node 2">
+        <div class="node node--service"><span class="node-name">Delivery ×2</span></div>
+        <div class="node node--service"><span class="node-name">Billing ×1</span></div>
+      </div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>How it works — the mainstream path</h2>
+<p>Most teams build a <strong>container image</strong> (multi-stage Dockerfile, minimal/distroless base), push it to a
+registry, and let <strong>Kubernetes</strong> run it: deployments + replicas, <a href="service-discovery.html">service
+discovery</a> via DNS, autoscaling (HPA), <a href="observability.html">health probes</a>, and
+<strong>zero-downtime rolling updates</strong>. <a href="externalized-configuration.html">Config &amp; secrets</a> come from
+ConfigMaps/Secrets. A <a href="service-mesh-sidecar.html">service mesh</a> can separate <em>release</em> from
+<em>deploy</em> (ship the bits, shift traffic later).</p>
+<figure class="diagram">
+<figcaption>Choosing a deployment style</figcaption>
+<pre class="mermaid">
+flowchart TD
+  A{Event-driven &amp; spiky?} -- yes --> S[Serverless<br/>Lambda / Cloud Run / Knative]
+  A -- no --> B{Need hard isolation<br/>or special hardware?}
+  B -- yes --> V[Dedicated VM<br/>immutable image]
+  B -- no --> C[Container + Kubernetes<br/>the default]
+  classDef hi fill:#064e3b,stroke:#34d399,color:#fff;
+  class C hi;
+</pre>
+</figure>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Retail</span>
+<h3>Black-Friday autoscaling on Kubernetes</h3>
+<p>The checkout container scales from 3 to 120 pods in ~90 seconds via the Horizontal Pod Autoscaler — something a
+VM-per-service model (minutes to boot an AMI) can't match. Bin-packing many containers per node keeps cost down off-peak.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · IoT / event processing</span>
+<h3>Serverless for bursty, fan-in workloads</h3>
+<p>50,000 devices publish telemetry; a Lambda scales from 0 to thousands of concurrent invocations during spikes and back
+to zero (you pay only for execution). Long-running stateful services, though, stay on Kubernetes to avoid cold-start and
+timeout limits.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Docker/containerd + Kubernetes</strong> are the industry default; <strong>Helm</strong>/<strong>Kustomize</strong>
+  template manifests and <strong>ArgoCD</strong>/<strong>Flux</strong> do GitOps delivery.</li>
+  <li><strong>Monzo</strong> and <strong>Airbnb</strong> run 1,000+ services on Kubernetes; <strong>Karpenter</strong>
+  autoscales nodes.</li>
+  <li>Serverless: <strong>AWS Lambda</strong>, <strong>Azure Functions</strong>, <strong>Google Cloud Run</strong>,
+  <strong>Knative</strong>; <strong>Coca-Cola</strong> and <strong>Nordstrom</strong> are cited adopters.</li>
+  <li>VM era pioneers: <strong>Netflix</strong> baked immutable AMIs with Packer and deployed via Spinnaker.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Containers treated as VMs</strong> — SSHing in, local stateful storage; breaks restart/scaling semantics.</li>
+<li><strong>Missing resource limits</strong> — noisy-neighbour CPU/memory starvation.</li>
+<li><strong>Bad probes</strong> — liveness that restarts on a slow dependency; readiness that admits traffic too early.</li>
+<li><strong>Serverless on a latency-critical sync path</strong> — cold starts hurt; and costs cross over containers at high sustained RPS.</li>
+<li><strong>Underestimating K8s</strong> — it's powerful but a real operational commitment.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Four options: <strong>package, VM, container, serverless</strong> — a trade-off of isolation/startup/efficiency/ops.</li>
+<li><strong>Container + Kubernetes</strong> is today's default; <strong>serverless</strong> shines for event-driven/bursty work.</li>
+<li>Aim for <strong>immutable artifacts</strong> + <strong>zero-downtime</strong> rolling updates.</li>
+<li>Lean on the platform for <a href="service-discovery.html">discovery</a>, <a href="externalized-configuration.html">config</a>, <a href="observability.html">probes</a>; a <a href="service-mesh-sidecar.html">mesh</a> separates release from deploy.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why can a containerised service scale out in seconds while a service-per-VM model takes minutes — and why does that
+matter for cost?</p>
+<details><summary>Show answer</summary>
+<p>A container shares the host kernel and starts as a process in a ready-made image (seconds), whereas a VM must boot a
+full OS (minutes). Faster start means autoscalers can track demand closely, so you run fewer idle instances "just in case."
+Combined with bin-packing many containers onto each node, that's far higher utilisation — you pay for capacity you
+actually use rather than over-provisioning slow-to-boot VMs.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="service-mesh-sidecar.html">Service mesh &amp; sidecar</a> · <a href="service-discovery.html">Service discovery</a> ·
+<a href="microservice-chassis.html">Microservice chassis</a> · <a href="externalized-configuration.html">Externalized configuration</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="service-mesh-sidecar.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Service Mesh &amp; Sidecar</span></a>
+      <a class="next" href="strangler-application.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Strangler Application</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

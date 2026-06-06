@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How services talk: synchronous RPI (REST/gRPC) and asynchronous messaging.">
+  <title>Communication Styles · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html" class="active"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Categories</div>
+    <nav class="nav">
+      <a href="application-architecture.html"><span class="nidx">01</span><span>Application Architecture</span></a>
+      <a href="decomposition.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="communication.html" class="active"><span class="nidx">03</span><span>Communication Styles</span></a>
+      <a href="reliability.html"><span class="nidx">04</span><span>Reliable Communication</span></a>
+      <a href="service-discovery.html"><span class="nidx">05</span><span>Service Discovery</span></a>
+      <a href="transactional-messaging.html"><span class="nidx">06</span><span>Transactional Messaging</span></a>
+      <a href="data-consistency.html"><span class="nidx">07</span><span>Data Consistency</span></a>
+      <a href="business-logic.html"><span class="nidx">08</span><span>Business Logic Design</span></a>
+      <a href="querying.html"><span class="nidx">09</span><span>Querying</span></a>
+      <a href="external-api.html"><span class="nidx">10</span><span>External API</span></a>
+      <a href="testing.html"><span class="nidx">11</span><span>Testing</span></a>
+      <a href="security.html"><span class="nidx">12</span><span>Security</span></a>
+      <a href="cross-cutting.html"><span class="nidx">13</span><span>Cross-Cutting Concerns</span></a>
+      <a href="observability.html"><span class="nidx">14</span><span>Observability</span></a>
+      <a href="deployment.html"><span class="nidx">15</span><span>Deployment</span></a>
+      <a href="refactoring.html"><span class="nidx">16</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Category</a><span class="sep">/</span>Communication Styles</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge">2 lessons</span> <span class="badge badge--diff">2 patterns</span></div>
+      <h1>Communication Styles</h1>
+      <p class="page-sub">How services talk: synchronous RPI (REST/gRPC) and asynchronous messaging.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-rpi"><h2 class="unit-title">Remote Procedure Invocation (REST &amp; gRPC)</h2><div class="tags"><span class="badge badge--pat">Remote procedure invocation</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> With Remote Procedure Invocation a service calls another
+  using a <em>synchronous request/response</em> protocol — usually REST over HTTP for public/simple APIs, or gRPC over
+  HTTP/2 for fast internal calls — and waits for the reply.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>The caller genuinely needs the <strong>reply now</strong> to continue.</li>
+      <li>The interaction is a simple <strong>query or command</strong> with a clear response.</li>
+      <li>You want familiar, debuggable, request/response semantics.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Avoid when</h5>
+    <ul>
+      <li>You're chaining many synchronous calls (availability collapses).</li>
+      <li>The work is long-running or fire-and-forget — prefer <a href="#sec-messaging">messaging</a>.</li>
+      <li>You need temporal decoupling between sender and receiver.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: services need to talk</h3>
+<p>The moment you split a monolith, in-process method calls become network calls. The simplest mental model is the
+remote procedure call: the client sends a request and blocks until the provider responds — just like calling a function,
+except now there's a network, latency and the possibility of <strong>partial failure</strong> in between.</p>
+
+<h3>The pattern: synchronous request/response</h3>
+<figure class="arch">
+  <figcaption>Architecture — synchronous RPI between services</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="node node--service"><span class="node-kind">Caller</span><span class="node-name">Order Service</span></div>
+    <div class="flow-arrow"><span>request</span></div>
+    <div class="node node--service"><span class="node-kind">Provider</span><span class="node-name">Kitchen Service</span></div>
+    <div class="flow-arrow is-dashed"><span>response (blocks)</span></div>
+    <div class="node node--db"><span class="node-name">Kitchen DB</span></div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--service">Service</span><span class="chip chip--db">Database</span></div>
+  </div>
+</figure>
+<p>Two technologies dominate:</p>
+<ul>
+  <li><strong>REST</strong> — resources + HTTP verbs + JSON. Ubiquitous, browser-friendly, easy to debug, great for public
+  APIs. Describe it with <strong>OpenAPI</strong>.</li>
+  <li><strong>gRPC</strong> — define services/messages in <strong>Protocol Buffers</strong>, generate strongly-typed
+  clients, transport over HTTP/2 (multiplexed, streaming, binary). Excellent for high-volume internal calls.</li>
+</ul>
+
+<figure class="diagram">
+<figcaption>Sequence — a synchronous call and the partial-failure risk</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant O as Order Service
+  participant K as Kitchen Service
+  O->>K: POST /tickets (create ticket)
+  activate K
+  K-->>O: 201 Created
+  deactivate K
+  Note over O,K: If Kitchen is slow or down,<br/>O blocks — its threads pile up<br/>(see Circuit Breaker)
+</pre>
+</figure>
+
+<h3>The big caveat: synchronous calls reduce availability</h3>
+<p>This is one of the book's most important lessons. If Order Service <em>synchronously</em> calls Consumer, Kitchen and
+Accounting to create an order, then Order is only available when <em>all three</em> are up. Availability multiplies
+downward: chain enough 99.5%-available services and the composite is far worse. Synchronous RPI <strong>couples the
+availability</strong> of caller and callee.</p>
+<div class="callout callout--warn"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Two defences</div>
+<p>(1) Protect every synchronous call with a <a href="../by-pattern/circuit-breaker.html">circuit breaker</a>, timeout and fallback.
+(2) Where you can, <strong>eliminate the synchronous call</strong> entirely by using <a href="#sec-messaging">asynchronous
+messaging</a> — the single biggest availability win in the book.</p>
+</div></div>
+
+<h3>REST vs gRPC</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th></th><th>REST</th><th>gRPC</th></tr></thead>
+<tbody>
+<tr><td>Payload</td><td>JSON/text (human-readable)</td><td>Protobuf (compact binary)</td></tr>
+<tr><td>Transport</td><td>HTTP/1.1 typically</td><td>HTTP/2 (multiplexed, streaming)</td></tr>
+<tr><td>Contract</td><td>OpenAPI (optional)</td><td><code>.proto</code> (mandatory, codegen)</td></tr>
+<tr><td>Speed</td><td>Baseline</td><td>Often <strong>7–10× faster</strong> for internal payloads</td></tr>
+<tr><td>Best for</td><td>Public APIs, browsers</td><td>Internal service-to-service, real-time, IoT</td></tr>
+</tbody>
+</table></div>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Mixed protocols</span>
+<h4>REST at the edge, gRPC inside</h4>
+<p>A trading platform exposes <strong>REST</strong> to partners and browsers (via the <a href="../by-pattern/api-gateway.html">API
+gateway</a>), but services call each other over <strong>gRPC</strong> for the pricing hot path where every millisecond
+counts. The gateway translates protocols — the canonical "REST outside, gRPC inside" arrangement.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>Google &amp; Uber</strong> run gRPC + Protobuf for vast internal service meshes.</li>
+  <li>Benchmarks consistently show gRPC several times faster than REST for internal traffic due to HTTP/2 + binary
+  encoding.</li>
+  <li><strong>OpenAPI</strong> (REST) and <strong>Protobuf/Buf</strong> (gRPC) anchor API contracts and enable
+  <a href="../by-pattern/contract-testing.html">contract testing</a> and codegen.</li>
+  <li>Service location is resolved by <a href="../by-pattern/service-discovery.html">service discovery</a>; resilience by
+  <a href="../by-pattern/circuit-breaker.html">circuit breakers</a> (often pushed into a <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a>).</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Synchronous call chains</strong> — A→B→C→D destroys availability and adds latency. Flatten or go async.</li>
+<li><strong>No timeouts</strong> — a hung dependency exhausts the caller's threads; always bound every call.</li>
+<li><strong>Chatty fine-grained APIs</strong> — many tiny round-trips; design coarser operations.</li>
+<li><strong>Breaking API changes</strong> — evolve compatibly (additive changes, versioning).</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>RPI = synchronous request/response: <strong>REST</strong> for public/simple, <strong>gRPC</strong> for fast internal.</li>
+<li>Synchronous calls <strong>couple availability</strong> — minimise chains; protect with timeouts + <a href="../by-pattern/circuit-breaker.html">circuit breakers</a>.</li>
+<li>Prefer <a href="#sec-messaging">asynchronous messaging</a> whenever a blocking reply isn't truly required.</li>
+<li>Always describe APIs with a contract (OpenAPI / Protobuf) and evolve them compatibly.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Service A calls B, C and D synchronously, each 99.9% available. Roughly what's A's ceiling availability for that
+operation, and how would you raise it?</p>
+<details><summary>Show answer</summary>
+<p>≈ 0.999³ ≈ <strong>99.7%</strong> — A can't be more available than the product of its hard dependencies. Raise it by
+removing the synchronous coupling: have A react to <a href="#sec-messaging">events</a> or pre-cache the data it needs, so
+it can answer even when B/C/D are momentarily down (plus circuit breakers + fallbacks for the calls that remain).</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-messaging">Asynchronous messaging</a> · <a href="../by-pattern/circuit-breaker.html">Circuit breaker</a> ·
+<a href="../by-pattern/service-discovery.html">Service discovery</a> · <a href="../by-pattern/api-gateway.html">API gateway</a></p>
+</section>
+<section class="unit" id="sec-messaging"><h2 class="unit-title">Asynchronous Messaging</h2><div class="tags"><span class="badge badge--pat">Messaging</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Services communicate by sending <em>messages</em> through a
+  <em>message broker</em> instead of calling each other directly — the sender doesn't wait for or even know the
+  receiver, which decouples them in time and dramatically improves availability.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>You want <strong>temporal decoupling</strong> — sender and receiver needn't be up together.</li>
+      <li>You're publishing <a href="../by-pattern/domain-event.html">events</a> many services react to.</li>
+      <li>Work is long-running, bursty, or fire-and-forget.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>The caller truly needs an immediate answer (use <a href="#sec-rpi">RPI</a>).</li>
+      <li>The team isn't ready for <strong>eventual consistency</strong> &amp; async debugging.</li>
+      <li>You forget idempotency — messages arrive <strong>at least once</strong>.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: synchronous coupling is fragile</h3>
+<p>As the <a href="#sec-rpi">RPI</a> lesson showed, synchronous request/response couples the availability of caller and
+callee and adds latency to every chain. For everything that doesn't <em>need</em> an immediate reply, there's a better way.</p>
+
+<h3>The pattern: talk through a broker</h3>
+<p>The sender writes a message to a <strong>channel</strong> on a <strong>message broker</strong>; the broker delivers it
+to one or more consumers. The sender returns immediately. If a consumer is down, the broker holds the message until it
+recovers.</p>
+<figure class="arch">
+  <figcaption>Architecture — services integrated through a message broker</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--service" style="align-self:center"><span class="node-kind">Producer</span><span class="node-name">Order Service</span></div>
+    <div class="flow-arrow is-down"><span>publish OrderCreated</span></div>
+    <div class="node node--broker" style="align-self:center"><span class="node-kind">Broker</span><span class="node-name">Apache Kafka topic</span></div>
+    <div class="flow-arrow is-down"><span>deliver (pub/sub)</span></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Consumer</span><span class="node-name">Kitchen</span></div>
+      <div class="node node--service"><span class="node-kind">Consumer</span><span class="node-name">Delivery</span></div>
+      <div class="node node--service"><span class="node-kind">Consumer</span><span class="node-name">Notification</span></div>
+    </div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--service">Service</span><span class="chip chip--broker">Broker</span></div>
+  </div>
+</figure>
+
+<h3>How it works</h3>
+<h4>Message &amp; channel types</h4>
+<ul>
+  <li><strong>Message kinds:</strong> <em>command</em> (do X), <em>document</em> (here's data), <em>event</em>
+  (X happened).</li>
+  <li><strong>Channels:</strong> <em>point-to-point</em> (exactly one consumer handles each message — work queues) and
+  <em>publish-subscribe</em> (every subscriber gets a copy — events).</li>
+  <li><strong>Async interaction styles:</strong> one-way notifications, async request/response (via a reply channel), and
+  one-to-many publish/subscribe.</li>
+</ul>
+<figure class="diagram">
+<figcaption>Sequence — async request/response over messaging (with a reply channel)</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant O as Order Service
+  participant B as Broker
+  participant K as Kitchen Service
+  O->>B: command: CreateTicket (replyTo: order-replies)
+  Note over O: returns immediately,<br/>does not block
+  B->>K: deliver command
+  K->>K: create ticket (local txn)
+  K->>B: reply: TicketCreated (correlationId)
+  B->>O: deliver reply
+</pre>
+</figure>
+
+<h4>Three rules you cannot skip</h4>
+<ul>
+  <li><strong>Idempotency.</strong> Brokers deliver <em>at least once</em>; design consumers so reprocessing a message is
+  harmless (track processed message ids).</li>
+  <li><strong>Ordering.</strong> Use a partition/ordering key (e.g. <code>orderId</code>) so related messages stay in order.</li>
+  <li><strong>Reliable publishing.</strong> Don't lose messages on a crash between "DB commit" and "publish" — use the
+  <a href="../by-pattern/transactional-messaging.html">transactional outbox</a>.</li>
+</ul>
+
+<h3>Improving availability by removing synchronous calls</h3>
+<p>The book's flagship example: instead of Order Service synchronously calling Consumer/Kitchen/Accounting at order time,
+each service <em>subscribes to events</em> and keeps a local replica of the data it needs. Now Order Service can create an
+order even if the others are momentarily down — availability stops multiplying downward. This is the <a href="../by-pattern/saga.html">saga</a>
+machinery in disguise.</p>
+
+<h3>In the wild — brokers &amp; who uses them</h3>
+<ul>
+  <li><strong>Apache Kafka</strong> — the de-facto log-based streaming backbone (event sourcing, replay, high throughput
+  500k–1M+ msg/s). As of <strong>Kafka 4.0 (2025)</strong> ZooKeeper is gone — KRaft makes it a single-binary deploy.</li>
+  <li><strong>RabbitMQ</strong> — rich routing (direct/topic/fanout/headers), great for task queues &amp; competing
+  consumers; lowest latency at moderate scale.</li>
+  <li><strong>Apache Pulsar</strong> — separates compute (brokers) from storage (BookKeeper); built-in multi-tenancy,
+  geo-replication, tiered storage.</li>
+  <li><strong>NATS / JetStream</strong> — tiny, sub-millisecond; CNCF graduated. <strong>AWS SQS/SNS</strong>,
+  <strong>Google Pub/Sub</strong> — managed cloud options.</li>
+</ul>
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Choosing a broker</div>
+<p>Need ordered, replayable event streams + consumer groups → <strong>Kafka</strong>. Need flexible routing and classic
+work queues with no replay → <strong>RabbitMQ</strong>. Need the lightest possible footprint → <strong>NATS</strong>.
+Need multi-region with tight RPOs → <strong>Pulsar</strong>.</p>
+</div></div>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Non-idempotent consumers</strong> — duplicate delivery double-charges, double-ships. Track message ids.</li>
+<li><strong>Lost messages</strong> on the dual-write gap — use the <a href="../by-pattern/transactional-messaging.html">outbox</a>.</li>
+<li><strong>Ignoring ordering</strong> — interleaved events corrupt state; key by aggregate id.</li>
+<li><strong>No dead-letter handling</strong> — poison messages block the queue forever.</li>
+<li><strong>Async everywhere</strong> — some flows really do need a synchronous reply; don't be dogmatic.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Messaging decouples services in <strong>time</strong> → big availability gains over <a href="#sec-rpi">synchronous RPI</a>.</li>
+<li>Know your message kinds (command/document/event) and channels (point-to-point / pub-sub).</li>
+<li>Always design for <strong>at-least-once</strong> delivery: idempotent consumers + ordering keys.</li>
+<li>Publish reliably with the <a href="../by-pattern/transactional-messaging.html">transactional outbox</a>; it underpins <a href="../by-pattern/saga.html">sagas</a> and <a href="../by-pattern/event-sourcing.html">event sourcing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A consumer crashes after doing its work but <em>before</em> acknowledging the message. What happens next, and what
+must the consumer guarantee?</p>
+<details><summary>Show answer</summary>
+<p>The broker, not having received an ack, redelivers the message — so it's processed twice. The consumer must therefore
+be <strong>idempotent</strong>: e.g., record each handled message id in the same local transaction as its effect, and
+skip messages it has already processed. At-least-once delivery makes idempotency non-negotiable.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-rpi">Remote procedure invocation</a> · <a href="../by-pattern/transactional-messaging.html">Transactional messaging</a> ·
+<a href="../by-pattern/saga.html">Saga</a> · <a href="../by-pattern/domain-event.html">Domain event</a> · <a href="../by-pattern/event-sourcing.html">Event sourcing</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="decomposition.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Decomposition Strategies</span></a>
+      <a class="next" href="reliability.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Reliable Communication</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

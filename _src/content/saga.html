@@ -1,0 +1,265 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A saga keeps data consistent across services by running a
+  <em>sequence of local transactions</em> — one per service — where each step publishes a message that triggers the next,
+  and any failure is undone by running <em>compensating transactions</em> in reverse.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>A business operation spans <strong>two or more services</strong> (each with its own database).</li>
+      <li>You need consistency but <strong>cannot use a distributed (2PC/XA) transaction</strong>.</li>
+      <li>Eventual consistency is acceptable for the operation.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Avoid / be careful when</h4>
+    <ul>
+      <li>The operation must be <strong>strongly isolated</strong> (no intermediate states visible).</li>
+      <li>It fits inside <strong>one service / one database</strong> — just use a local ACID transaction.</li>
+      <li>Your team isn't ready for the <strong>debugging cost</strong> of asynchronous, multi-step flows.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: one operation, many databases</h2>
+<p>In a microservice architecture, <strong>each service owns its own database</strong> — that's what makes services
+independently deployable. But many business operations naturally span several services. In the book's FTGO
+food-delivery app, <em>Create Order</em> must touch four services: it has to validate the <strong>Consumer</strong>,
+create a <strong>Ticket</strong> in the <strong>Kitchen</strong>, authorise the customer's card in
+<strong>Accounting</strong>, and create the <strong>Order</strong> itself.</p>
+<p>In a monolith this is one local <code>BEGIN … COMMIT</code> transaction. Across services, the old answer was a
+<strong>distributed transaction</strong> using two-phase commit (2PC/XA). But 2PC is a poor fit for modern systems:</p>
+<ul>
+  <li>Many modern datastores (most NoSQL databases, and message brokers like Kafka) <strong>don't support it</strong>.</li>
+  <li>It's a <strong>synchronous, blocking</strong> protocol — if any participant is down, the whole operation is stuck,
+  which reduces the availability of the entire system.</li>
+  <li>It couples services together at exactly the place microservices try to decouple them.</li>
+</ul>
+<blockquote>The saga pattern replaces one distributed ACID transaction with a series of small local transactions
+coordinated by messages. You trade <em>isolation</em> (the "I" in ACID) for <em>availability</em> and
+<em>loose coupling</em> — and then manage the consequences deliberately.</blockquote>
+
+<h2>The pattern: local transactions stitched together</h2>
+<p>A saga is a sequence of steps. Each step is a <strong>local transaction</strong> in one service that updates its
+database and then publishes a message or event. That message triggers the next step. If step <em>N</em> fails, the
+saga executes <strong>compensating transactions</strong> that semantically undo steps <em>N-1 … 1</em>.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — the Create Order saga and its participants</figcaption>
+  <div class="arch-canvas">
+    <div class="arch-stack">
+      <div class="arch-flow">
+        <div class="node node--service"><span class="node-kind">Saga coordinator</span><span class="node-name">Order Service</span><span class="node-sub">Create Order Saga</span></div>
+        <div class="flow-arrow is-bi"><span>own txn</span></div>
+        <div class="node node--db"><span class="node-kind">Database</span><span class="node-name">Order DB</span></div>
+      </div>
+      <div class="flow-arrow is-down"><span>commands &amp; replies (async)</span></div>
+      <div class="node node--broker"><span class="node-kind">Message broker</span><span class="node-name">Apache Kafka</span><span class="node-sub">command &amp; reply channels</span></div>
+      <div class="flow-arrow is-down"></div>
+      <div class="arch-group" data-label="Saga participants — each with its own database">
+        <div class="node node--service"><span class="node-kind">Service</span><span class="node-name">Consumer</span></div>
+        <div class="node node--db"><span class="node-name">Consumer&nbsp;DB</span></div>
+        <div class="node node--service"><span class="node-kind">Service</span><span class="node-name">Kitchen</span></div>
+        <div class="node node--db"><span class="node-name">Kitchen&nbsp;DB</span></div>
+        <div class="node node--service"><span class="node-kind">Service</span><span class="node-name">Accounting</span></div>
+        <div class="node node--db"><span class="node-name">Accounting&nbsp;DB</span></div>
+      </div>
+    </div>
+    <div class="arch-legend">
+      <span class="chip chip--service">Service</span>
+      <span class="chip chip--db">Database (private)</span>
+      <span class="chip chip--broker">Message broker</span>
+    </div>
+  </div>
+</figure>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">Compensating transactions are not rollbacks</div>
+<p>You can't <code>ROLLBACK</code> a transaction another service already committed. Instead you issue a <em>new</em>
+transaction that semantically reverses it — e.g. <code>cancelTicket()</code> after <code>createTicket()</code>, or
+<code>refund()</code> after <code>charge()</code>. Steps that can still abort cheaply are <em>compensatable</em>; the
+step that commits the point of no return is the <strong>pivot</strong>; everything after it is <em>retriable</em>.</p>
+</div></div>
+
+<h2>How it works: two ways to coordinate</h2>
+<p>There are two flavours of saga, distinguished only by <em>who decides the next step</em>.</p>
+
+<h3>1. Choreography — the participants decide</h3>
+<p>There is no central coordinator. Each service subscribes to the others' <a href="ref:domain-event">domain events</a>
+and reacts. It's simple and highly decoupled, but the overall flow is implicit — it lives in the wiring, not in one place.</p>
+<figure class="diagram">
+<figcaption>Sequence — choreography-based Create Order saga (happy path)</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant O as Order Service
+  participant C as Consumer Service
+  participant K as Kitchen Service
+  participant A as Accounting Service
+  O->>O: create Order (PENDING)
+  O--)C: OrderCreated
+  C->>C: verify consumer
+  C--)K: ConsumerVerified
+  K->>K: create Ticket (CREATE_PENDING)
+  K--)A: TicketCreated
+  A->>A: authorize credit card
+  A--)O: CardAuthorized
+  O->>O: Order = APPROVED
+  Note over O,A: Any failure publishes a "rejected" event<br/>that drives compensations backwards
+</pre>
+</figure>
+
+<h3>2. Orchestration — a coordinator decides</h3>
+<p>A central <strong>saga orchestrator</strong> (often living inside the service that initiates the saga) tells each
+participant what to do via <em>command</em> messages and waits for <em>reply</em> messages. The flow is explicit and
+testable, and complex sagas stay manageable. This is the approach the book recommends for non-trivial sagas.</p>
+<figure class="diagram">
+<figcaption>Sequence — orchestration-based Create Order saga</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant SO as Create Order Saga
+  participant C as Consumer Service
+  participant K as Kitchen Service
+  participant A as Accounting Service
+  SO->>C: Verify Consumer (command)
+  C-->>SO: Consumer Verified (reply)
+  SO->>K: Create Ticket
+  K-->>SO: Ticket Created
+  SO->>A: Authorize Card
+  A-->>SO: Card Authorized
+  SO->>K: Approve Ticket
+  SO->>SO: Order = APPROVED
+</pre>
+</figure>
+
+<p>When a step fails, the orchestrator walks <em>backwards</em>, invoking each compensating command:</p>
+<figure class="diagram">
+<figcaption>Flow — compensation when the card authorisation fails</figcaption>
+<pre class="mermaid">
+flowchart LR
+  A[Verify Consumer] --> B[Create Ticket]
+  B --> C{Authorize Card}
+  C -- ok --> D[Approve Ticket] --> E[Order APPROVED]
+  C -- fails --> F[Reject Ticket]
+  F --> G[Order REJECTED]
+  classDef bad fill:#7f1d1d,stroke:#f87171,color:#fff;
+  classDef good fill:#064e3b,stroke:#34d399,color:#fff;
+  class F,G bad;
+  class E good;
+</pre>
+</figure>
+
+<div class="tbl-wrap">
+<table>
+<thead><tr><th>Aspect</th><th>Choreography</th><th>Orchestration</th></tr></thead>
+<tbody>
+<tr><td>Coordination</td><td>Distributed across participants via events</td><td>Centralised in an orchestrator</td></tr>
+<tr><td>Coupling</td><td>Looser — services only know events</td><td>Orchestrator knows all participants</td></tr>
+<tr><td>Best for</td><td>Simple sagas (2–4 steps)</td><td>Complex sagas with branching / many steps</td></tr>
+<tr><td>Risk</td><td>Logic is implicit; cyclic dependencies creep in</td><td>Orchestrator can become a "god" object</td></tr>
+<tr><td>Where's the flow?</td><td>Nowhere and everywhere</td><td>One readable place</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Worked use cases</h2>
+
+<div class="usecase">
+<span class="uc-tag">Use case · FTGO food delivery (the book)</span>
+<h3>Create Order</h3>
+<p>The <code>Create Order Saga</code> orchestrator coordinates Consumer → Kitchen → Accounting. The <strong>pivot</strong>
+is authorising the card: before it, everything is compensatable (cancel ticket, reject order); after a successful
+authorisation, remaining steps are retriable (approve ticket, approve order). The order sits in a
+<code>PENDING</code> state — a <em>semantic lock</em> — until the saga completes.</p>
+</div>
+
+<div class="usecase">
+<span class="uc-tag">Use case · Banking</span>
+<h3>Money transfer between two accounts at different services</h3>
+<p>Transfer ₹10,000 from a Checking service to a Savings service. Steps: (1) Checking debits ₹10,000 and records a
+<code>TransferInitiated</code>; (2) Savings credits ₹10,000. If the credit fails (account frozen), the compensation
+<code>creditBack()</code> reverses the debit. The account briefly shows a pending hold (semantic lock) so the customer
+can't double-spend the in-flight amount — a textbook <em>commutative-update</em> + <em>pessimistic-view</em>
+countermeasure combination.</p>
+</div>
+
+<div class="usecase">
+<span class="uc-tag">Use case · Travel</span>
+<h3>Trip booking: flight + hotel + car</h3>
+<p>A booking saga reserves a flight, then a hotel, then a car. If the car step fails, it cancels the hotel and the
+flight. Because each provider is a separate system, a distributed transaction is impossible — a saga with clear
+compensations (and a time-boxed "reservation hold") is the standard solution.</p>
+</div>
+
+<h2>The hard part: handling the lack of isolation</h2>
+<p>Because a saga is <em>not</em> isolated, other transactions can see its intermediate state, causing anomalies. The
+book names three and gives countermeasures you should design in from the start:</p>
+<ul>
+  <li><strong>Lost updates</strong> — one saga overwrites another's change. <em>Countermeasure:</em> the
+  <strong>semantic lock</strong> (a <code>*_PENDING</code> flag) so others know a saga is in progress.</li>
+  <li><strong>Dirty reads</strong> — a transaction reads uncommitted saga state. <em>Countermeasures:</em>
+  <strong>commutative updates</strong> (e.g. debit/credit commute) and <strong>reread value</strong> before acting.</li>
+  <li><strong>Fuzzy / non-repeatable reads.</strong> <em>Countermeasure:</em> the <strong>by-value</strong> strategy —
+  use the business risk of each request to choose between sagas and distributed transactions.</li>
+</ul>
+
+<h2>In the wild — tooling &amp; who uses it</h2>
+<p>Sagas moved from "advanced pattern" to mainstream, largely because <strong>durable-execution and workflow engines</strong>
+now do the heavy lifting (state persistence, retries, timeouts, versioning):</p>
+<ul>
+  <li><strong>Temporal</strong> (and its predecessor Cadence, born at Uber) — a durable-execution platform that treats a
+  saga as long-running <em>code</em> (Go, Java, TypeScript, Python) and handles fault tolerance for you. The most popular
+  code-first choice today.</li>
+  <li><strong>Camunda 8 / Zeebe</strong> — BPMN diagrams as the source of truth; strong in regulated industries. Camunda
+  publicly documents banks using its <em>compensation events</em> to implement sagas.</li>
+  <li><strong>AWS Step Functions</strong> — a managed orchestrator; the "saga" reference pattern is in AWS's own guidance.</li>
+  <li><strong>Eventuate Tram Sagas</strong> — Chris Richardson's own framework, the one used in the book's examples.</li>
+  <li><strong>Axon Framework</strong> (JVM), <strong>MassTransit</strong> / <strong>NServiceBus</strong> (.NET) — saga
+  support baked into messaging frameworks.</li>
+</ul>
+<div class="callout callout--story"><div class="ic">&#127974;</div><div class="body">
+<div class="ttl">Real world: a bank's compensation saga</div>
+<p>Garanti BBVA Teknoloji has written publicly about implementing <em>orchestration-based</em> sagas on
+<strong>Camunda&nbsp;8</strong>, using BPMN compensation events so business analysts and engineers read the same diagram —
+a concrete example of why orchestration wins when auditability and complex branching matter.</p>
+</div></div>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Forgetting compensations.</strong> Every compensatable step needs a tested "undo". Missing ones leave money
+or inventory stranded.</li>
+<li><strong>Non-idempotent handlers.</strong> Messages are delivered <em>at least once</em>; a participant that charges a
+card twice on a redelivery is a production incident. Make every step idempotent.</li>
+<li><strong>Assuming isolation.</strong> If you forget the countermeasures, you'll ship subtle "double-spend" bugs.</li>
+<li><strong>A god orchestrator</strong> that contains business logic belonging to participants — keep it to coordination.</li>
+<li><strong>Choreography for complex flows</strong> — beyond ~4 steps the implicit flow becomes impossible to reason about.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A saga = a sequence of <strong>local transactions</strong> + <strong>compensating transactions</strong>, coordinated by messages.</li>
+<li>You trade <strong>isolation</strong> for availability and decoupling — then add countermeasures (semantic locks, commutative updates).</li>
+<li><strong>Choreography</strong> (events, decentralised) for simple sagas; <strong>orchestration</strong> (a coordinator) for complex ones.</li>
+<li>Reliable message publishing is mandatory — pair sagas with the <a href="ref:transactional-messaging">transactional outbox</a>.</li>
+<li>Use a durable workflow engine (Temporal, Camunda&nbsp;8) instead of hand-rolling state machines.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>In the Create Order saga, why is authorising the credit card chosen as the <em>pivot</em> transaction rather than
+creating the order?</p>
+<details><summary>Show answer</summary>
+<p>Everything up to the card authorisation is cheaply reversible (cancel ticket, reject order), so those steps are
+<em>compensatable</em>. Authorising the card is the first step the customer truly commits to and that downstream steps
+depend on — after it succeeds the saga should only go forward (retriable). Designating it the pivot minimises the work
+that ever needs compensating and defines the point of no return.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:transactional-messaging">Transactional messaging</a> ·
+<a href="ref:event-sourcing">Event sourcing</a> · <a href="ref:cqrs">CQRS</a> ·
+<a href="ref:messaging">Asynchronous messaging</a> · <a href="ref:domain-event">Domain event</a></p>

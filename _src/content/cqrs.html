@@ -1,0 +1,162 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> CQRS splits the model in two — a <em>command</em> side that
+  handles writes through aggregates, and one or more <em>query</em> sides made of purpose-built, denormalised
+  <em>read models</em> (materialised views) that are kept up to date by subscribing to the command side's events.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>Queries <strong>span services</strong> or need a shape the write model can't serve.</li>
+      <li><a href="ref:api-composition">API composition</a> can't do the filtering/sorting efficiently.</li>
+      <li>You use <a href="ref:event-sourcing">event sourcing</a> (it can't be queried directly).</li>
+      <li>Read and write workloads need to <strong>scale independently</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Avoid when</h4>
+    <ul>
+      <li>A simple aggregate serves both reads and writes fine.</li>
+      <li>The team can't handle <strong>eventual consistency</strong> in the UX.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: the write model is a bad query model</h2>
+<p>Aggregates and event stores are optimised for <em>consistency on write</em>, not for queries. "Show all of a
+customer's orders, filtered by status, sorted by date, with restaurant names" is awkward against normalised,
+service-siloed write data — and <a href="ref:api-composition">API composition</a> chokes when the join is large or needs
+rich filtering. We need a model shaped for <em>reading</em>.</p>
+
+<h2>The pattern: separate read models, fed by events</h2>
+<p>Keep the command side (writes through aggregates). Then build separate <strong>read models</strong> — each a
+denormalised view in whatever datastore best fits the query (document, search index, key-value, SQL). A
+<strong>read-model updater</strong> subscribes to <a href="ref:domain-event">domain events</a> and keeps the views current.
+Reads never touch the write store.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — command side, events, and query-optimised read models</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--client"><span class="node-kind">Command</span><span class="node-name">place / cancel</span></div>
+      <div class="flow-arrow"></div>
+      <div class="node node--service"><span class="node-kind">Write side</span><span class="node-name">Order Aggregate</span></div>
+      <div class="flow-arrow"></div>
+      <div class="node node--db"><span class="node-name">Write DB</span></div>
+    </div>
+    <div class="flow-arrow is-down"><span>domain events</span></div>
+    <div class="arch-flow">
+      <div class="node node--ext"><span class="node-kind">Projector</span><span class="node-name">Read-model updater</span></div>
+      <div class="flow-arrow"><span>upsert view</span></div>
+      <div class="node node--db"><span class="node-kind">Read side</span><span class="node-name">Order-history view</span><span class="node-sub">denormalised, indexed</span></div>
+      <div class="flow-arrow is-bi"><span>query</span></div>
+      <div class="node node--client"><span class="node-name">Query API</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Flow — writes and reads travel separate paths</figcaption>
+<pre class="mermaid">
+flowchart LR
+  C[Command] --> W[Write model<br/>aggregate + DB]
+  W -- domain events --> P[Projector]
+  P --> R[(Read model<br/>materialised view)]
+  Q[Query] --> R
+  classDef w fill:#064e3b,stroke:#34d399,color:#fff;
+  classDef r fill:#0c2b3b,stroke:#38bdf8,color:#fff;
+  class C,W w;
+  class Q,R r;
+</pre>
+</figure>
+
+<h2>How it works — what to get right</h2>
+<ul>
+  <li><strong>Idempotent projectors</strong> — events arrive at-least-once and can be replayed; track the last processed
+  event id so reprocessing is safe.</li>
+  <li><strong>A view per query</strong> — model each read store for its query (Elasticsearch for search, DynamoDB/Redis
+  for key lookups, SQL for reporting).</li>
+  <li><strong>Rebuild by replay</strong> — need a new view? Replay the event log to build it; no migration of the write side.</li>
+  <li><strong>Embrace eventual consistency</strong> — the read side lags the write side by milliseconds-to-seconds; make
+  that explicit in the API/UX (e.g. <code>202 Accepted</code>, optimistic UI).</li>
+</ul>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">CQRS ≠ Event Sourcing</div>
+<p>They pair beautifully but are independent. You can do CQRS with an ordinary relational write DB (publishing events via
+the <a href="ref:transactional-messaging">outbox</a> / CDC). <a href="ref:event-sourcing">Event sourcing</a>, however,
+almost always <em>needs</em> CQRS — because the event store can't answer ad-hoc queries.</p>
+</div></div>
+
+<h2>Trade-offs</h2>
+<div class="tradeoffs">
+  <div class="pros"><h4>Benefits</h4><ul>
+    <li>Efficient queries across services; each view tuned to its access pattern.</li>
+    <li>Read and write sides scale independently.</li>
+    <li>Add new views anytime by replaying events.</li>
+    <li>Natural fit for event sourcing.</li>
+  </ul></div>
+  <div class="cons"><h4>Drawbacks</h4><ul>
+    <li>More moving parts (projectors, extra stores).</li>
+    <li>Eventual consistency / replication lag.</li>
+    <li>"Read-your-writes" needs explicit handling.</li>
+    <li>Risk of projection sprawl without governance.</li>
+  </ul></div>
+</div>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Order history (the book)</span>
+<h3>A DynamoDB view of every customer's orders</h3>
+<p>FTGO maintains an <code>OrderHistory</code> read model in DynamoDB, updated by handlers consuming order/delivery
+events. The customer's "past orders" screen — filterable, sortable — is a single indexed lookup, no cross-service join.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · Social feed</span>
+<h3>Pre-built per-user notification feed</h3>
+<p>A <code>NotificationCreated</code> event fans out into per-user materialised views (a Redis sorted set keyed by user).
+The read path is a single <code>ZRANGE</code> — the expensive fan-out happens once, on write.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Axon</strong>, <strong>Kurrent/EventStoreDB</strong> (native projections), <strong>Marten</strong> — first-class
+  CQRS support.</li>
+  <li><strong>Kafka Streams / ksqlDB</strong> and <strong>DynamoDB Streams + Lambda</strong> — common ways to build
+  projections; read stores are often <strong>Elasticsearch</strong>, <strong>Redis</strong> or <strong>DynamoDB</strong>.</li>
+  <li>Greg Young popularised CQRS; Microsoft's Azure Architecture Center documents it as a core pattern.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Surprise eventual consistency</strong> — command then immediate read shows stale data; design the UX for it.</li>
+<li><strong>Projection explosion</strong> — a new view per UI whim; govern and consolidate.</li>
+<li><strong>Non-idempotent projectors</strong> — replays/duplicates corrupt the view.</li>
+<li><strong>Unmonitored consumer lag</strong> — the read model silently falls minutes behind under load.</li>
+<li><strong>CQRS everywhere</strong> — applying it to simple CRUD adds cost with no payoff.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Separate <strong>commands (write)</strong> from <strong>queries (read models)</strong>; keep views fresh via events.</li>
+<li>Each read model is <strong>denormalised and tuned</strong> to one query; rebuild by replay.</li>
+<li>Make projectors <strong>idempotent</strong>; embrace and surface <strong>eventual consistency</strong>.</li>
+<li>Use it when <a href="ref:api-composition">API composition</a> can't cope, or alongside <a href="ref:event-sourcing">event sourcing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A user cancels an order, the command succeeds, but the order list still shows it as "active" for a second. Bug or
+expected — and how do you handle it?</p>
+<details><summary>Show answer</summary>
+<p>Expected: the read model is updated asynchronously from the cancel event, so it lags briefly (eventual consistency).
+Handle it in the UX — optimistically update the UI immediately, return <code>202 Accepted</code> with a way to poll/await
+freshness, or show a "processing" state — rather than promising read-your-writes from the read side.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:event-sourcing">Event sourcing</a> · <a href="ref:domain-event">Domain event</a> ·
+<a href="ref:api-composition">API composition</a> · <a href="ref:transactional-messaging">Transactional messaging</a> ·
+<a href="ref:api-gateway">API gateway</a></p>

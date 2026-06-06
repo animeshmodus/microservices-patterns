@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Stop calling a failing dependency to prevent cascading failures — fail fast and recover.">
+  <title>Circuit Breaker · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html" class="active"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Circuit Breaker</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/reliability.html">Reliable Communication</a> <a class="badge badge--ch" href="../by-chapter/ch03.html">Chapter 3</a></div>
+      <h1>Circuit Breaker</h1>
+      <p class="page-sub">Stop calling a failing dependency to prevent cascading failures — fail fast and recover.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-circuit-breaker"><div class="tags"><span class="badge badge--pat">Circuit breaker</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A circuit breaker wraps a remote call and, after too many
+  failures, "trips open" so further calls <em>fail fast</em> (returning an error or fallback) instead of piling up —
+  protecting the caller from a slow or dead dependency and giving that dependency room to recover.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You make <strong>synchronous</strong> calls to another service or resource.</li>
+      <li>A slow dependency could <strong>exhaust your threads</strong> and cascade.</li>
+      <li>A degraded/fallback response is better than hanging.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You set thresholds blindly — tune to real traffic.</li>
+      <li>You treat it as a substitute for fixing a genuinely broken dependency.</li>
+      <li>Your fallback hides errors that ops needs to see.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: one slow dependency takes everyone down</h2>
+<p>Synchronous calls have a nasty failure mode. If Kitchen Service becomes slow, every Order Service thread that calls it
+blocks waiting. Threads pile up, the pool exhausts, and Order Service stops serving <em>all</em> requests — even ones that
+never needed Kitchen. A single slow dependency triggers a <strong>cascading failure</strong>.</p>
+
+<h2>The pattern: a state machine that fails fast</h2>
+<p>The circuit breaker tracks the success/failure of calls through it and switches between three states. When failures
+exceed a threshold it <strong>opens</strong> and rejects calls immediately (optionally returning a fallback). After a
+cool-down it goes <strong>half-open</strong>, letting a trial call through to test recovery.</p>
+
+<figure class="diagram">
+<figcaption>State machine — the circuit breaker</figcaption>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Closed
+  Closed --> Open: failure rate exceeds threshold
+  Open --> HalfOpen: after wait duration
+  HalfOpen --> Closed: trial calls succeed
+  HalfOpen --> Open: trial call fails
+  note right of Closed: calls pass through, failures counted
+  note right of Open: fail fast / serve fallback
+  note right of HalfOpen: allow limited trial calls
+</pre>
+</figure>
+
+<figure class="arch">
+  <figcaption>Architecture — the breaker sits in front of every remote call</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="node node--service"><span class="node-kind">Caller</span><span class="node-name">Order Service</span></div>
+    <div class="flow-arrow"><span>call</span></div>
+    <div class="node node--gateway"><span class="node-kind">Resilience</span><span class="node-name">Circuit Breaker</span><span class="node-sub">+ timeout · retry · bulkhead</span></div>
+    <div class="flow-arrow is-dashed"><span>if open</span></div>
+    <div class="node node--ext"><span class="node-kind">Degraded</span><span class="node-name">Fallback</span><span class="node-sub">cached / default value</span></div>
+    <div class="flow-arrow"><span>if closed</span></div>
+    <div class="node node--service"><span class="node-kind">Provider</span><span class="node-name">Kitchen Service</span></div>
+  </div></div>
+</figure>
+
+<h2>How it works — the resilience toolkit</h2>
+<p>A circuit breaker is best combined with its siblings. In Resilience4j the recommended nesting order (outermost first)
+is <strong>Retry → CircuitBreaker → RateLimiter → TimeLimiter → Bulkhead</strong>:</p>
+<ul>
+  <li><strong>Timeout</strong> — never wait forever; bound every call.</li>
+  <li><strong>Retry</strong> — retry <em>transient</em> failures with backoff (but only idempotent operations).</li>
+  <li><strong>Bulkhead</strong> — isolate resources (separate thread pools / concurrency limits per dependency) so one
+  drowning dependency can't sink the rest — named after a ship's watertight compartments.</li>
+  <li><strong>Fallback</strong> — when open, return a sensible default (cached data, empty list, "try later").</li>
+</ul>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce</span>
+<h3>Recommendations time out — show the page anyway</h3>
+<p>A product page calls a Recommendations service. When it slows down, the breaker opens and the page instantly falls
+back to "popular items" from cache. Customers still check out; the recommendation outage is invisible. Without the
+breaker, every product-page thread would block on Recommendations and the whole storefront would stall.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Netflix Hystrix</strong> pioneered this in the JVM world but has been in <em>maintenance mode since 2018</em>.</li>
+  <li><strong>Resilience4j</strong> (v2.x) is its lightweight, functional successor and the default Spring recommends
+  today; it bundles circuit breaker, retry, bulkhead, rate limiter and time limiter.</li>
+  <li><strong>Polly</strong> is the equivalent in the .NET ecosystem.</li>
+  <li>A <a href="service-mesh-sidecar.html">service mesh</a> (Istio/Envoy) can enforce circuit-breaking
+  (<em>outlier detection</em>) at the infrastructure layer, so application code stays clean.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Retrying non-idempotent calls</strong> — retried "charge card" = double charge. Combine retries with idempotency.</li>
+<li><strong>No timeout</strong> — a breaker without a timeout still lets slow calls hang.</li>
+<li><strong>Swallowing failures silently</strong> — fallbacks must still emit metrics/alerts; an open breaker is a signal.</li>
+<li><strong>One global breaker</strong> — use a breaker (and bulkhead) <em>per dependency</em>, not one for everything.</li>
+<li><strong>Thresholds copied from a blog</strong> — tune error-rate window and wait-duration to your real traffic.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>The breaker turns a slow/dead dependency into a <strong>fast, contained failure</strong> — no cascading collapse.</li>
+<li>Three states: <strong>Closed → Open → Half-Open</strong>, driven by a failure threshold and a cool-down.</li>
+<li>Always pair it with <strong>timeout, retry (idempotent only), bulkhead and fallback</strong>.</li>
+<li>Use <strong>Resilience4j</strong> (JVM) / <strong>Polly</strong> (.NET), or push it into a <a href="service-mesh-sidecar.html">service mesh</a>.</li>
+<li>Essential for every <a href="rpi.html">synchronous call</a>; the <a href="api-gateway.html">gateway</a> is a natural place for it too.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why does the breaker have a <em>half-open</em> state instead of just flipping straight from Open back to Closed after
+the timer expires?</p>
+<details><summary>Show answer</summary>
+<p>To probe safely. If it slammed fully Closed, a flood of real traffic would hit a dependency that may still be sick,
+re-overloading it instantly. Half-Open lets a <em>small number</em> of trial calls through: if they succeed the breaker
+closes; if they fail it re-opens — so recovery is tested gradually rather than gambled on.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="rpi.html">Remote procedure invocation</a> · <a href="service-discovery.html">Service discovery</a> ·
+<a href="service-mesh-sidecar.html">Service mesh &amp; sidecar</a> · <a href="api-gateway.html">API gateway</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="messaging.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Asynchronous Messaging</span></a>
+      <a class="next" href="service-discovery.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Service Discovery</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

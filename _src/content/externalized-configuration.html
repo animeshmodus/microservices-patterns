@@ -1,0 +1,114 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Don't bake environment-specific settings (database URLs,
+  credentials, feature flags) into the build — supply them to the service <em>at runtime</em>, either pushed in
+  (env vars / mounted files) or pulled from a configuration/secret server, so one immutable artifact runs unchanged in
+  every environment.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>The same build must run in <strong>dev / staging / prod</strong>.</li>
+      <li>You have <strong>secrets</strong> that must never live in source or images.</li>
+      <li>You want to change config without rebuilding/redeploying.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Anti-patterns to kill</h4>
+    <ul>
+      <li>Hard-coded endpoints/credentials in code or the image.</li>
+      <li>Per-environment branches/builds of the same service.</li>
+      <li>Secrets committed to Git.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: config differs per environment, builds shouldn't</h2>
+<p>A service connects to different databases, brokers and dependencies in dev, staging and prod, and needs secrets it must
+never expose. If those values are compiled into the artifact, you end up with environment-specific builds, leaked
+credentials, and "works on my machine" drift. The Twelve-Factor App rule: <em>strictly separate config from code</em>.</p>
+
+<h2>The pattern: inject configuration at runtime</h2>
+<p>Build one immutable artifact; provide its configuration externally when it runs. There are two delivery styles:</p>
+<figure class="arch">
+  <figcaption>Architecture — push vs pull configuration</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="arch-group" data-label="Push model">
+      <div class="node node--ext"><span class="node-kind">Platform</span><span class="node-name">Env vars / mounted files</span></div>
+      <div class="flow-arrow"><span>at startup</span></div>
+      <div class="node node--service"><span class="node-name">Service</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>or</span></div>
+    <div class="arch-group" data-label="Pull model">
+      <div class="node node--service"><span class="node-name">Service</span></div>
+      <div class="flow-arrow"><span>fetch on boot/refresh</span></div>
+      <div class="node node--gateway"><span class="node-kind">Config / secret server</span><span class="node-name">Config Server · Vault</span></div>
+    </div>
+  </div></div>
+</figure>
+<ul>
+  <li><strong>Push</strong> — the deployment platform injects config via <strong>environment variables</strong> or mounted
+  files when the service starts (e.g. Kubernetes ConfigMaps/Secrets). Simple, no extra runtime dependency.</li>
+  <li><strong>Pull</strong> — the service fetches config from a <strong>config server</strong> or
+  <strong>secret store</strong> on startup (and can refresh). Centralised, supports dynamic updates and rich secret
+  management.</li>
+</ul>
+
+<h2>How it works — and secrets get special treatment</h2>
+<ul>
+  <li><strong>Layered config:</strong> sensible defaults in the artifact, overridden by environment-specific values.</li>
+  <li><strong>Secrets ≠ config:</strong> credentials/keys belong in a <em>secret manager</em> (encrypted at rest, access-controlled, audited, ideally dynamically issued and short-lived) — not in plain ConfigMaps or Git.</li>
+  <li><strong>Refresh:</strong> pull-based setups can hot-reload some values (e.g. feature flags) without a restart.</li>
+  <li>This is a core responsibility of the <a href="ref:microservice-chassis">microservice chassis</a>.</li>
+</ul>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · One image, three environments</span>
+<h3>Promote the exact artifact you tested</h3>
+<p>The Order Service container built in CI is promoted unchanged from staging to prod. Kubernetes injects the right
+<code>DB_URL</code> via a ConfigMap and the DB password via a Secret sourced from Vault; the prod database credential is a
+short-lived, dynamically-issued Vault lease. Nothing environment-specific is ever rebuilt — what you tested is what ships.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Kubernetes ConfigMaps &amp; Secrets</strong> — the default push mechanism for containerised services.</li>
+  <li><strong>HashiCorp Vault</strong> — secrets management with dynamic, short-lived credentials and encryption-as-a-service.</li>
+  <li><strong>Spring Cloud Config</strong> / <strong>Consul KV</strong> — centralised pull-based config servers.</li>
+  <li><strong>AWS Parameter Store / Secrets Manager</strong>, <strong>Azure Key Vault</strong>, <strong>GCP Secret
+  Manager</strong> — managed cloud equivalents.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Secrets in images/Git</strong> — the classic breach vector; use a secret manager.</li>
+<li><strong>Plaintext Kubernetes Secrets</strong> — base64 is not encryption; enable encryption-at-rest / external secret stores.</li>
+<li><strong>Config drift</strong> — hand-edited prod config diverging from source of truth; manage config as code.</li>
+<li><strong>Restart-only changes</strong> — no way to flip a flag without redeploy; add refresh where it matters.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li><strong>Separate config from code</strong> — one immutable artifact, runtime-injected settings.</li>
+<li><strong>Push</strong> (env vars / ConfigMaps) is simplest; <strong>pull</strong> (config server) centralises &amp; enables refresh.</li>
+<li>Treat <strong>secrets</strong> specially — a real secret manager (Vault, cloud KMS), never Git or plain images.</li>
+<li>It's a standard duty of the <a href="ref:microservice-chassis">microservice chassis</a> and ties into <a href="ref:security-access-token">security</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is promoting the <em>same</em> container image through environments (with externalised config) safer than building
+a separate image per environment?</p>
+<details><summary>Show answer</summary>
+<p>Because the artifact you tested in staging is byte-for-byte what runs in prod — only the injected configuration differs.
+Per-environment builds reintroduce the risk that prod runs subtly different code/dependencies than what you validated,
+and they couple config changes to rebuilds. Externalised config gives you "build once, run anywhere," with environment
+differences confined to data, not code.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:microservice-chassis">Microservice chassis</a> · <a href="ref:deployment-patterns">Deployment</a> ·
+<a href="ref:security-access-token">Access token</a> · <a href="ref:observability">Observability</a></p>

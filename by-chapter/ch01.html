@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Why teams outgrow the monolith, the scale cube, and what the microservice architecture really is.">
+  <title>Escaping Monolithic Hell · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html" class="active"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Chapters</div>
+    <nav class="nav">
+      <a href="ch01.html" class="active"><span class="nidx">01</span><span>Escaping Monolithic Hell</span></a>
+      <a href="ch02.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="ch03.html"><span class="nidx">03</span><span>Interprocess Communication</span></a>
+      <a href="ch04.html"><span class="nidx">04</span><span>Managing Transactions with Sagas</span></a>
+      <a href="ch05.html"><span class="nidx">05</span><span>Designing Business Logic</span></a>
+      <a href="ch06.html"><span class="nidx">06</span><span>Developing Business Logic with Event Sourcing</span></a>
+      <a href="ch07.html"><span class="nidx">07</span><span>Implementing Queries</span></a>
+      <a href="ch08.html"><span class="nidx">08</span><span>External API Patterns</span></a>
+      <a href="ch09.html"><span class="nidx">09</span><span>Testing Microservices (Parts 1 &amp; 2)</span></a>
+      <a href="ch11.html"><span class="nidx">11</span><span>Developing Production-Ready Services</span></a>
+      <a href="ch12.html"><span class="nidx">12</span><span>Deploying Microservices</span></a>
+      <a href="ch13.html"><span class="nidx">13</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Chapter</a><span class="sep">/</span>Escaping Monolithic Hell</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--ch">Chapter 1</span> <span class="badge">1 lesson</span> <span class="badge badge--diff">2 patterns</span></div>
+      <h1>Chapter 1 · Escaping Monolithic Hell</h1>
+      <p class="page-sub">Why teams outgrow the monolith, the scale cube, and what the microservice architecture really is.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-monolith-vs-microservices"><h2 class="unit-title">Monolith vs. Microservice Architecture</h2><div class="tags"><span class="badge badge--pat">Monolithic architecture</span><span class="badge badge--pat">Microservice architecture</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> The <em>monolithic</em> style packages all of an application's
+  functionality into a single deployable unit; the <em>microservice</em> style structures it as a set of small,
+  independently deployable services organised around business capabilities — and the whole book is about doing the
+  second one without the pain.</div>
+  <div class="g-when">
+    <h5>Reach for microservices when</h5>
+    <ul>
+      <li>A large team is <strong>blocked by a single codebase &amp; release train</strong>.</li>
+      <li>Different parts need to <strong>scale or evolve independently</strong>.</li>
+      <li>You need <strong>fault isolation</strong> and polyglot tech choices.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Stay monolithic (for now) when</h5>
+    <ul>
+      <li>The product/domain is <strong>still being discovered</strong> (boundaries unclear).</li>
+      <li>The team is small and the app is <strong>not yet large</strong>.</li>
+      <li>You lack the <strong>operational maturity</strong> (CI/CD, containers, observability).</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: "monolithic hell"</h3>
+<p>The book opens with FTGO, a successful food-delivery company whose single, large application has slowed to a crawl.
+The monolith was great at first — easy to develop, test, deploy and scale (just run more copies). But as the codebase
+and team grew, it descended into what Richardson calls <strong>monolithic hell</strong>:</p>
+<ul>
+  <li><strong>Slow delivery.</strong> A small change requires understanding, testing and redeploying the <em>entire</em>
+  application; releases are big, risky and infrequent.</li>
+  <li><strong>An intimidating, brittle codebase</strong> that no one fully understands.</li>
+  <li><strong>Scaling is all-or-nothing</strong> — you can't scale just the part that's hot.</li>
+  <li><strong>Locked into an ageing tech stack</strong>; trying a new language/framework means rewriting everything.</li>
+</ul>
+
+<h3>Two architectural styles</h3>
+<figure class="arch">
+  <figcaption>Architecture — monolith (one deployable, one database) vs microservices (many)</figcaption>
+  <div class="arch-canvas">
+    <div class="arch-flow">
+      <div class="arch-group" data-label="Monolithic">
+        <div class="arch-stack">
+          <div class="node node--service"><span class="node-kind">Single deployable</span><span class="node-name">FTGO App</span><span class="node-sub">Orders · Kitchen · Delivery · Billing</span></div>
+          <div class="flow-arrow is-down"></div>
+          <div class="node node--db"><span class="node-name">One shared DB</span></div>
+        </div>
+      </div>
+      <div class="flow-arrow is-bi"><span>vs</span></div>
+      <div class="arch-group" data-label="Microservices">
+        <div class="arch-stack">
+          <div class="arch-flow">
+            <div class="node node--service"><span class="node-name">Order</span></div>
+            <div class="node node--service"><span class="node-name">Kitchen</span></div>
+            <div class="node node--service"><span class="node-name">Delivery</span></div>
+            <div class="node node--service"><span class="node-name">Billing</span></div>
+          </div>
+          <div class="flow-arrow is-down"></div>
+          <div class="arch-flow">
+            <div class="node node--db"><span class="node-name">DB</span></div>
+            <div class="node node--db"><span class="node-name">DB</span></div>
+            <div class="node node--db"><span class="node-name">DB</span></div>
+            <div class="node node--db"><span class="node-name">DB</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="arch-legend">
+      <span class="chip chip--service">Service / app</span>
+      <span class="chip chip--db">Database</span>
+    </div>
+  </div>
+</figure>
+<p>The defining trait of the microservice architecture isn't size — it's that each service is
+<strong>independently deployable</strong> and <strong>owns its own database</strong>. That single rule is what enables
+team autonomy, and it's also the source of every hard problem in this course (queries and transactions that now span
+services).</p>
+
+<h3>The scale cube — there's more than one way to scale</h3>
+<p>From <em>The Art of Scalability</em>, the scale cube models three independent scaling axes. Microservices are just
+<strong>one</strong> of them (the Y-axis); many systems only ever need the X-axis.</p>
+<figure class="arch">
+  <figcaption>The scale cube — three independent ways to scale an application</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="node node--service"><span class="node-kind">X-axis</span><span class="node-name">Clone</span><span class="node-sub">run N identical copies behind a load balancer</span></div>
+    <div class="node node--gateway"><span class="node-kind">Y-axis</span><span class="node-name">Functional decomposition</span><span class="node-sub">split by capability &rarr; microservices</span></div>
+    <div class="node node--db"><span class="node-kind">Z-axis</span><span class="node-name">Partition / shard</span><span class="node-sub">split by data (e.g. by customer id)</span></div>
+  </div></div>
+</figure>
+
+<h3>Benefits &amp; drawbacks</h3>
+<div class="tradeoffs">
+  <div class="pros"><h5>Benefits</h5><ul>
+    <li>Continuous delivery of large, complex apps; small, frequent, low-risk releases.</li>
+    <li>Services are small, understandable and independently scalable.</li>
+    <li>Fault isolation and freedom to adopt new tech per service.</li>
+    <li>Team autonomy — "two-pizza teams" own services end to end.</li>
+  </ul></div>
+  <div class="cons"><h5>Drawbacks</h5><ul>
+    <li>Finding the right service boundaries is genuinely hard.</li>
+    <li>Distributed systems are complex: partial failure, network, async.</li>
+    <li>Operations &amp; testing require real maturity (CI/CD, observability).</li>
+    <li>Cross-service queries &amp; transactions need <a href="../by-pattern/api-composition.html">composition</a>/<a href="../by-pattern/saga.html">sagas</a>.</li>
+  </ul></div>
+</div>
+
+<h3>Not a silver bullet: the "microservice premium"</h3>
+<p>Microservices buy you team-scaling, but at a real operational cost — Martin Fowler calls it the
+<em>microservice premium</em>. If your app isn't big enough (or your team mature enough) to pay it, a well-structured
+<strong>modular monolith</strong> is often the better call.</p>
+<div class="callout callout--story"><div class="ic">&#127909;</div><div class="body">
+<div class="ttl">Real world: when microservices were the <em>wrong</em> answer</div>
+<p>In 2023 <strong>Amazon Prime Video</strong> published a now-famous post describing how they moved an
+audio/video-monitoring pipeline <em>from</em> a distributed microservices + Step Functions design <em>back to</em> a
+single process — cutting infrastructure cost ~90%. The lesson isn't "monoliths win"; it's that architecture is a
+per-use-case trade-off. <strong>Shopify</strong> deliberately runs a <em>modular monolith</em> (Rails, with the
+<code>packwerk</code> tool enforcing module boundaries) at enormous scale.</p>
+</div></div>
+
+<figure class="diagram">
+<figcaption>A decision aid — should this system be microservices?</figcaption>
+<pre class="mermaid">
+flowchart TD
+  A[New or evolving domain?] -- yes --> M[Start with a modular monolith]
+  A -- no --> B{Team / app large enough<br/>to feel monolith pain?}
+  B -- no --> M
+  B -- yes --> C{Operational maturity?<br/>CI-CD, containers, tracing}
+  C -- no --> D[Invest in platform first]
+  C -- yes --> E[Decompose incrementally<br/>via the Strangler pattern]
+  classDef hi fill:#064e3b,stroke:#34d399,color:#fff;
+  class E hi;
+</pre>
+</figure>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>Amazon</strong> — migrated off a monolith from ~2002; the Bezos "API mandate" + two-pizza teams are the
+  canonical origin story (and ultimately birthed AWS).</li>
+  <li><strong>Netflix</strong> — hundreds of services on AWS, backed by heavy investment in resilience tooling
+  (Chaos Monkey, Eureka, Zuul, later Resilience4j).</li>
+  <li><strong>Uber</strong> — grew to ~2,000+ services, then introduced <em>Domain-Oriented Microservice Architecture
+  (DOMA)</em> to tame the sprawl by grouping services into domains.</li>
+  <li><strong>Shopify / Stack Overflow</strong> — proof that disciplined monoliths scale beautifully too.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>The distributed monolith</strong> — separately deployed services that are still tightly coupled (shared DB,
+synchronous call chains). Worst of both worlds.</li>
+<li><strong>Nano-services</strong> — splitting so finely that a single operation needs a dozen network hops.</li>
+<li><strong>Premature decomposition</strong> — carving boundaries before the domain is understood, then paying to move them.</li>
+<li><strong>"Mono bad, micro good" reflex</strong> — choosing the style for fashion, not for a measured trade-off.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>The microservice architecture is a tool for <strong>fast delivery by large teams</strong> — not a goal in itself.</li>
+<li>Its defining property: <strong>independently deployable</strong> services, each owning its data.</li>
+<li>It carries a real <strong>premium</strong>; small/young systems are usually better as modular monoliths.</li>
+<li>Use the <strong>scale cube</strong> to check whether you actually need Y-axis decomposition.</li>
+<li>If you do decompose, do it incrementally with the <a href="../by-pattern/strangler-application.html">Strangler</a> pattern.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Two teams ship a "microservices" system but can never deploy one service without the other. What anti-pattern is
+this, and what's the most likely root cause?</p>
+<details><summary>Show answer</summary>
+<p>It's a <strong>distributed monolith</strong>. The most common root cause is a <em>shared database</em> (or
+synchronous request chains that assume the other service is always up). The fix is data ownership per service plus
+asynchronous, well-contracted integration — restoring true independent deployability.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/decompose-by-business-capability.html">Decompose by business capability</a> ·
+<a href="../by-pattern/decompose-by-subdomain.html">Decompose by subdomain</a> · <a href="../by-pattern/strangler-application.html">Strangler application</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <span></span>
+      <a class="next" href="ch02.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Ch 2 · Decomposition Strategies</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

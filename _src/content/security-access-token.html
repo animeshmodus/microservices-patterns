@@ -1,0 +1,141 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Authenticate the user once at the edge (the
+  <a href="ref:api-gateway">API gateway</a>), then pass a signed, self-contained <em>access token</em> (a JWT) to and
+  between services, so each service can verify identity and authorise the request without a shared session or calling back
+  to a login server.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>Requests flow through <strong>many services</strong> that all need identity.</li>
+      <li>You can't replicate server-side <strong>session state</strong> everywhere.</li>
+      <li>You want stateless, scalable <strong>authorisation</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You validate that a token <em>exists</em> but not its <strong>issuer/audience/expiry/scope</strong>.</li>
+      <li>Tokens are <strong>long-lived</strong> (hard to revoke).</li>
+      <li>You forget service-to-service auth (<strong>mTLS</strong>).</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: security can't rely on a shared session</h2>
+<p>In a monolith, an in-memory session handled auth for the whole request. Across services there's no shared session, and
+making every service call a central auth server on every hop is slow and couples everyone to it. We need identity to
+travel <em>with</em> the request and be verifiable independently.</p>
+
+<h2>The pattern: authenticate at the edge, carry a token</h2>
+<p>The gateway authenticates the client (via <strong>OAuth 2.0 / OpenID Connect</strong>) and forwards a signed
+<strong>access token</strong> — typically a <strong>JWT</strong> containing identity and scopes — to downstream services.
+Each service verifies the token's signature and claims locally and authorises accordingly. No shared session, no callback.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — edge authentication + token propagation</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--client"><span class="node-kind">User</span><span class="node-name">Client</span></div>
+      <div class="flow-arrow is-bi"><span>login (OIDC)</span></div>
+      <div class="node node--ext"><span class="node-kind">Identity</span><span class="node-name">Auth Server</span><span class="node-sub">issues JWT</span></div>
+    </div>
+    <div class="flow-arrow is-down"><span>request + Bearer JWT</span></div>
+    <div class="arch-flow">
+      <div class="node node--gateway"><span class="node-kind">Edge</span><span class="node-name">API Gateway</span><span class="node-sub">validate JWT (JWKS)</span></div>
+      <div class="flow-arrow"><span>forward token / mTLS</span></div>
+      <div class="arch-group" data-label="Services verify JWT + authorise by scope">
+        <div class="node node--service"><span class="node-name">Order</span></div>
+        <div class="node node--service"><span class="node-name">Accounting</span></div>
+      </div>
+    </div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Sequence — login, token, propagation, verification</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as Client
+  participant A as Auth Server (OIDC)
+  participant G as API Gateway
+  participant S as Order Service
+  U->>A: authenticate (OAuth2 / OIDC)
+  A-->>U: access token (JWT, short-lived) + refresh token
+  U->>G: GET /orders (Authorization: Bearer JWT)
+  G->>G: verify signature via JWKS; check iss, aud, exp, scope
+  G->>S: forward request + token (mTLS)
+  S->>S: re-verify JWT; authorise by scope/role
+  S-->>U: 200 OK
+</pre>
+</figure>
+
+<h2>How it works — the modern stack</h2>
+<ul>
+  <li><strong>OAuth 2.0</strong> handles delegated authorisation; <strong>OpenID Connect (OIDC)</strong> adds the identity
+  layer (login/SSO) on top.</li>
+  <li><strong>JWT</strong> access tokens are self-contained (claims like <code>sub</code>, <code>scope</code>,
+  <code>exp</code>) and verified by checking the signature against the auth server's public keys (<strong>JWKS</strong>) —
+  no DB lookup.</li>
+  <li><strong>Short expiry</strong> (minutes) limits the blast radius of a leaked token; refresh tokens get new ones.</li>
+  <li><strong>Service-to-service:</strong> use <strong>mTLS</strong> for mutual machine identity (zero-trust), often with
+  <strong>SPIFFE/SPIRE</strong> issuing short-lived workload certificates — frequently handled by a
+  <a href="ref:service-mesh-sidecar">service mesh</a>.</li>
+  <li><strong>Token exchange</strong> (RFC 8693) safely narrows/delegates a token as it moves deeper into the graph.</li>
+</ul>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Scoped access on a money path</span>
+<h3>Only "payments:write" may charge a card</h3>
+<p>A user's JWT carries <code>scope: "orders:read orders:write"</code> but not <code>payments:write</code>. The gateway
+validates the token; Accounting Service, asked to charge a card, checks the scope and rejects — defence in depth, enforced
+locally by the service that owns the risk, without a central authorisation call.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li>Identity providers: <strong>Keycloak</strong> (OSS), <strong>Auth0</strong>, <strong>Okta</strong>, <strong>AWS
+  Cognito</strong>, <strong>Azure AD/Entra</strong>, <strong>IdentityServer</strong> (.NET).</li>
+  <li>The 2025 production norm: <em>gateway/BFF + OAuth2/OIDC + JWT + mTLS inside the mesh</em>, with SPIFFE/SPIRE for
+  workload identity in zero-trust designs.</li>
+  <li>The <strong>BFF pattern</strong> is increasingly used to keep tokens out of the browser (server-side session at the
+  BFF, tokens never exposed to JavaScript).</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Shallow validation</strong> — accepting any well-formed JWT without checking <code>iss</code>,
+<code>aud</code>, <code>exp</code> and <code>scope</code>. The #1 gateway security gap.</li>
+<li><strong>Long-lived tokens</strong> — hard to revoke; keep them short and use refresh tokens.</li>
+<li><strong>Trusting the network</strong> — no service-to-service auth; an intruder inside the perimeter roams freely. Use mTLS.</li>
+<li><strong>Secrets in code/images</strong> — keep keys/credentials in a secret store (see <a href="ref:externalized-configuration">externalized configuration</a>).</li>
+<li><strong>Tokens in the browser</strong> exposed to XSS — prefer the BFF/server-side-session approach.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Authenticate <strong>once at the edge</strong>; carry a signed <strong>JWT access token</strong> through the graph.</li>
+<li>Use <strong>OAuth2/OIDC</strong>; verify <strong>signature + iss/aud/exp/scope</strong> at every service.</li>
+<li>Keep tokens <strong>short-lived</strong>; secure service-to-service calls with <strong>mTLS</strong> (SPIFFE/SPIRE).</li>
+<li>The <a href="ref:api-gateway">gateway</a>/<a href="ref:bff">BFF</a> is the natural place to authenticate; a <a href="ref:service-mesh-sidecar">mesh</a> can enforce mTLS for free.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is a self-contained JWT preferable to having each service call the auth server to validate a session on every
+request?</p>
+<details><summary>Show answer</summary>
+<p>A JWT is verified <em>locally</em> by checking its signature against the auth server's published public keys (JWKS) and
+inspecting its claims — no network call per hop. That keeps services decoupled from the auth server, removes it as a
+per-request bottleneck/SPOF, and scales statelessly. The trade-off (harder revocation) is managed with short expiry +
+refresh tokens.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:api-gateway">API gateway</a> · <a href="ref:bff">Backends for Frontends</a> ·
+<a href="ref:service-mesh-sidecar">Service mesh &amp; sidecar</a> · <a href="ref:externalized-configuration">Externalized configuration</a></p>

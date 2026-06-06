@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Browse microservices patterns by book chapter.">
+  <title>By Chapter · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html" class="active"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Chapters</div>
+    <nav class="nav">
+      <a href="ch01.html"><span class="nidx">01</span><span>Escaping Monolithic Hell</span></a>
+      <a href="ch02.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="ch03.html"><span class="nidx">03</span><span>Interprocess Communication</span></a>
+      <a href="ch04.html"><span class="nidx">04</span><span>Managing Transactions with Sagas</span></a>
+      <a href="ch05.html"><span class="nidx">05</span><span>Designing Business Logic</span></a>
+      <a href="ch06.html"><span class="nidx">06</span><span>Developing Business Logic with Event Sourcing</span></a>
+      <a href="ch07.html"><span class="nidx">07</span><span>Implementing Queries</span></a>
+      <a href="ch08.html"><span class="nidx">08</span><span>External API Patterns</span></a>
+      <a href="ch09.html"><span class="nidx">09</span><span>Testing Microservices (Parts 1 &amp; 2)</span></a>
+      <a href="ch11.html"><span class="nidx">11</span><span>Developing Production-Ready Services</span></a>
+      <a href="ch12.html"><span class="nidx">12</span><span>Deploying Microservices</span></a>
+      <a href="ch13.html"><span class="nidx">13</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span>By Chapter</nav>
+    <header class="page-head">
+      <div class="page-meta"></div>
+      <h1>Browse by Chapter</h1>
+      <p class="page-sub">The guided, book-order path.</p>
+    </header>
+
+    <article class="prose">
+      <p class="page-sub" style="margin-bottom:1.2rem">Follow the book's narrative arc, chapter by chapter.</p><div class="view-cards"><a class="view-card" href="ch01.html"><span class="vc-ic">&#128214;</span><h3>Chapter 1 · Escaping Monolithic Hell</h3><p>Why teams outgrow the monolith, the scale cube, and what the microservice architecture really is.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Monolith vs. Microservice Architecture</span></div></a>
+<a class="view-card" href="ch02.html"><span class="vc-ic">&#128214;</span><h3>Chapter 2 · Decomposition Strategies</h3><p>Defining a microservice architecture by business capability and by DDD subdomain.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Decompose by Business Capability</span><span class="badge">Decompose by Subdomain (DDD)</span></div></a>
+<a class="view-card" href="ch03.html"><span class="vc-ic">&#128214;</span><h3>Chapter 3 · Interprocess Communication</h3><p>Synchronous RPI, asynchronous messaging, circuit breakers, service discovery and reliable messaging.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Remote Procedure Invocation (REST &amp; gRPC)</span><span class="badge">Asynchronous Messaging</span><span class="badge">Circuit Breaker</span><span class="badge">Service Discovery</span><span class="badge">Transactional Messaging (Outbox &amp; CDC)</span></div></a>
+<a class="view-card" href="ch04.html"><span class="vc-ic">&#128214;</span><h3>Chapter 4 · Managing Transactions with Sagas</h3><p>Replacing distributed transactions with choreography- and orchestration-based sagas.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Saga</span></div></a>
+<a class="view-card" href="ch05.html"><span class="vc-ic">&#128214;</span><h3>Chapter 5 · Designing Business Logic</h3><p>Transaction script vs domain model, DDD aggregates, and publishing domain events.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Business Logic: Domain Model &amp; Aggregate</span><span class="badge">Domain Event</span></div></a>
+<a class="view-card" href="ch06.html"><span class="vc-ic">&#128214;</span><h3>Chapter 6 · Developing Business Logic with Event Sourcing</h3><p>Persisting aggregates as a sequence of events — the event store, snapshots and replay.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Event Sourcing</span></div></a>
+<a class="view-card" href="ch07.html"><span class="vc-ic">&#128214;</span><h3>Chapter 7 · Implementing Queries</h3><p>Querying across services with API composition and CQRS materialised views.</p><div class="tags" style="margin-top:.6rem"><span class="badge">API Composition</span><span class="badge">CQRS</span></div></a>
+<a class="view-card" href="ch08.html"><span class="vc-ic">&#128214;</span><h3>Chapter 8 · External API Patterns</h3><p>The API gateway and backends-for-frontends; GraphQL as a modern realisation.</p><div class="tags" style="margin-top:.6rem"><span class="badge">API Gateway</span><span class="badge">Backends for Frontends (BFF)</span></div></a>
+<a class="view-card" href="ch09.html"><span class="vc-ic">&#128214;</span><h3>Chapter 9 · Testing Microservices (Parts 1 &amp; 2)</h3><p>The test pyramid, consumer-driven contract tests, and service component tests.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Contract &amp; Component Testing</span></div></a>
+<a class="view-card" href="ch11.html"><span class="vc-ic">&#128214;</span><h3>Chapter 11 · Developing Production-Ready Services</h3><p>Security with access tokens, externalised configuration, observability and the chassis.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Microservice Security &amp; Access Token</span><span class="badge">Externalized Configuration</span><span class="badge">Observability</span><span class="badge">Microservice Chassis</span></div></a>
+<a class="view-card" href="ch12.html"><span class="vc-ic">&#128214;</span><h3>Chapter 12 · Deploying Microservices</h3><p>Language packages, VMs, containers/Kubernetes, serverless, and the service mesh / sidecar.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Service Mesh &amp; Sidecar</span><span class="badge">Deployment: Containers, Kubernetes &amp; Serverless</span></div></a>
+<a class="view-card" href="ch13.html"><span class="vc-ic">&#128214;</span><h3>Chapter 13 · Refactoring to Microservices</h3><p>Strangling the monolith and protecting new services with an anti-corruption layer.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Strangler Application</span><span class="badge">Anti-Corruption Layer</span></div></a></div>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <span></span><span></span>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

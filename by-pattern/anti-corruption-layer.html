@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Translate between a new clean model and a legacy one so the legacy design can't leak in.">
+  <title>Anti-Corruption Layer · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html" class="active"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Anti-Corruption Layer</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/refactoring.html">Refactoring to Microservices</a> <a class="badge badge--ch" href="../by-chapter/ch13.html">Chapter 13</a></div>
+      <h1>Anti-Corruption Layer</h1>
+      <p class="page-sub">Translate between a new clean model and a legacy one so the legacy design can't leak in.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-anti-corruption-layer"><div class="tags"><span class="badge badge--pat">Anti-corruption layer</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> An anti-corruption layer (ACL) is a translation layer placed
+  at the boundary between a new, clean service and a legacy or external system — it converts between the two models so the
+  messy, foreign model can't leak in and corrupt your domain.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>A new service must integrate with a <strong>legacy</strong> system (e.g. during a <a href="strangler-application.html">strangler</a> migration).</li>
+      <li>You depend on an <strong>external/generic</strong> system with an awkward model.</li>
+      <li>You want to protect your <strong>ubiquitous language</strong> at a boundary.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>The ACL becomes a <strong>business-logic dumping ground</strong>.</li>
+      <li>You build a <strong>bidirectional</strong> ACL (often a sign the boundary is wrong).</li>
+      <li>It's a trivial field rename — a value object may suffice.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: the legacy model wants to infect the new one</h2>
+<p>When a clean new service talks directly to a legacy system, the legacy's data structures, naming and quirks tend to
+seep into the new code — its DTOs, then its domain objects — until the new service is just a reskin of the old mess. The
+same happens with external systems that have cryptic or ill-fitting models. You need a guard at the gate.</p>
+
+<h2>The pattern: translate at the boundary</h2>
+<p>From Eric Evans' Domain-Driven Design context-mapping: insert an <strong>anti-corruption layer</strong> — a set of
+adapters/translators — between the two bounded contexts. Inside your boundary you speak <em>your</em> clean model; the ACL
+translates to and from the foreign model. The foreign model never crosses the line.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — the ACL isolates the clean model from the legacy one</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="node node--service"><span class="node-kind">New service</span><span class="node-name">Clean domain model</span></div>
+    <div class="flow-arrow is-bi"><span>your language</span></div>
+    <div class="node node--gateway"><span class="node-kind">ACL</span><span class="node-name">Anti-Corruption Layer</span><span class="node-sub">adapter + translator</span></div>
+    <div class="flow-arrow is-bi"><span>their language</span></div>
+    <div class="node node--ext"><span class="node-kind">Legacy / external</span><span class="node-name">Mainframe · vendor API</span></div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Flow — translation keeps the foreign model out</figcaption>
+<pre class="mermaid">
+flowchart LR
+  N[New Service<br/>clean aggregates] -->|calls| A[Anti-Corruption Layer]
+  A -->|translate request| L[(Legacy / external system)]
+  L -->|legacy response| A
+  A -->|translate to clean model| N
+  classDef acl fill:#3a2a0c,stroke:#fbbf24,color:#fff;
+  class A acl;
+</pre>
+</figure>
+
+<h2>How it works</h2>
+<ul>
+  <li>Put the ACL in the <strong>downstream (consuming)</strong> service — it's <em>your</em> defence, not the legacy
+  system's job.</li>
+  <li>Translate <strong>both structure and semantics</strong> — field names, enumerations, units, null conventions, error
+  models — not just shapes.</li>
+  <li>Implement it as <strong>adapters/translators</strong> (Adapter + Facade); keep your domain model on the inside,
+  pristine.</li>
+  <li>Treat it as <strong>plumbing</strong>, version it, and <strong>test the mappings thoroughly</strong> — they're often
+  the most fragile, fiddly code in the system.</li>
+</ul>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Healthcare</span>
+<h3>HL7 → a clean Appointment</h3>
+<p>A new scheduling service consumes <strong>HL7 v2</strong> messages from a legacy EHR. The ACL parses HL7 segments and
+maps them to a clean <code>Appointment</code> aggregate, so the scheduling domain never imports an HL7 library or knows
+the cryptic segment names — the legacy format stays outside the wall.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · Strangler migration</span>
+<h3>New service over a mainframe</h3>
+<p>During a <a href="strangler-application.html">strangler</a> migration, a new Spring service reads from a CDC-replicated
+copy of a mainframe table. An ACL maps the mainframe's <code>CUST_REC</code> fields to a clean <code>Customer</code>
+model, so when the mainframe is finally retired, only the ACL changes — the domain is untouched.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li>Defined by <strong>Eric Evans</strong> (DDD, 2003) as a context-mapping pattern; documented as a cloud pattern by
+  the <strong>Azure Architecture Center</strong>.</li>
+  <li>Common toolkits: <strong>MapStruct</strong> (Java), <strong>AutoMapper</strong> (.NET) for translation;
+  <strong>Apache Camel</strong> for integration; a Kafka consumer that converts legacy events to clean domain events is an
+  ACL too.</li>
+  <li>Heavily used in <strong>SAP S/4HANA</strong> migrations, banking mainframe modernisation, and any integration with a
+  generic/vendor subdomain (payments, GDS, identity).</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Logic creep</strong> — the ACL accumulates business rules; keep it to translation.</li>
+<li><strong>Bidirectional ACL</strong> — translating both ways is a smell that the context boundary is misplaced.</li>
+<li><strong>Letting types leak</strong> — skipping the ACL "just this once" gradually corrupts the clean model.</li>
+<li><strong>Stale mappings</strong> — the legacy schema changes and the ACL silently mistranslates; test &amp; monitor it.</li>
+<li><strong>Over-engineering</strong> — a heavy ACL framework for a couple of field renames.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>An ACL is a <strong>translation boundary</strong> that stops a legacy/external model corrupting your clean one.</li>
+<li>Place it in the <strong>consuming</strong> service; translate <strong>structure <em>and</em> semantics</strong>.</li>
+<li>Keep it <strong>plumbing</strong> (adapters/translators), well-tested and versioned — no business logic.</li>
+<li>Essential during <a href="strangler-application.html">strangler migrations</a> and when integrating <a href="decompose-by-subdomain.html">generic subdomains</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why place the anti-corruption layer in the new service rather than modifying the legacy system to emit a clean model?</p>
+<details><summary>Show answer</summary>
+<p>The legacy/external system is often unchangeable, shared by other consumers, or simply not yours to modify — and even
+if you could, you'd be coupling its release to your needs. The ACL is <em>your</em> protective boundary: by owning the
+translation in the consuming service, you control your clean model, can adapt when the legacy schema shifts (changing only
+the ACL), and you don't impose your model on a system that other clients still depend on.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="strangler-application.html">Strangler application</a> · <a href="decompose-by-subdomain.html">Decompose by subdomain</a> ·
+<a href="business-logic.html">Domain model &amp; aggregate</a> · <a href="monolith-vs-microservices.html">Microservice architecture</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="strangler-application.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Strangler Application</span></a>
+      <span></span>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

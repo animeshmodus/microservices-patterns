@@ -1,0 +1,141 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Services communicate by sending <em>messages</em> through a
+  <em>message broker</em> instead of calling each other directly — the sender doesn't wait for or even know the
+  receiver, which decouples them in time and dramatically improves availability.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You want <strong>temporal decoupling</strong> — sender and receiver needn't be up together.</li>
+      <li>You're publishing <a href="ref:domain-event">events</a> many services react to.</li>
+      <li>Work is long-running, bursty, or fire-and-forget.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>The caller truly needs an immediate answer (use <a href="ref:rpi">RPI</a>).</li>
+      <li>The team isn't ready for <strong>eventual consistency</strong> &amp; async debugging.</li>
+      <li>You forget idempotency — messages arrive <strong>at least once</strong>.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: synchronous coupling is fragile</h2>
+<p>As the <a href="ref:rpi">RPI</a> lesson showed, synchronous request/response couples the availability of caller and
+callee and adds latency to every chain. For everything that doesn't <em>need</em> an immediate reply, there's a better way.</p>
+
+<h2>The pattern: talk through a broker</h2>
+<p>The sender writes a message to a <strong>channel</strong> on a <strong>message broker</strong>; the broker delivers it
+to one or more consumers. The sender returns immediately. If a consumer is down, the broker holds the message until it
+recovers.</p>
+<figure class="arch">
+  <figcaption>Architecture — services integrated through a message broker</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--service" style="align-self:center"><span class="node-kind">Producer</span><span class="node-name">Order Service</span></div>
+    <div class="flow-arrow is-down"><span>publish OrderCreated</span></div>
+    <div class="node node--broker" style="align-self:center"><span class="node-kind">Broker</span><span class="node-name">Apache Kafka topic</span></div>
+    <div class="flow-arrow is-down"><span>deliver (pub/sub)</span></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Consumer</span><span class="node-name">Kitchen</span></div>
+      <div class="node node--service"><span class="node-kind">Consumer</span><span class="node-name">Delivery</span></div>
+      <div class="node node--service"><span class="node-kind">Consumer</span><span class="node-name">Notification</span></div>
+    </div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--service">Service</span><span class="chip chip--broker">Broker</span></div>
+  </div>
+</figure>
+
+<h2>How it works</h2>
+<h3>Message &amp; channel types</h3>
+<ul>
+  <li><strong>Message kinds:</strong> <em>command</em> (do X), <em>document</em> (here's data), <em>event</em>
+  (X happened).</li>
+  <li><strong>Channels:</strong> <em>point-to-point</em> (exactly one consumer handles each message — work queues) and
+  <em>publish-subscribe</em> (every subscriber gets a copy — events).</li>
+  <li><strong>Async interaction styles:</strong> one-way notifications, async request/response (via a reply channel), and
+  one-to-many publish/subscribe.</li>
+</ul>
+<figure class="diagram">
+<figcaption>Sequence — async request/response over messaging (with a reply channel)</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant O as Order Service
+  participant B as Broker
+  participant K as Kitchen Service
+  O->>B: command: CreateTicket (replyTo: order-replies)
+  Note over O: returns immediately,<br/>does not block
+  B->>K: deliver command
+  K->>K: create ticket (local txn)
+  K->>B: reply: TicketCreated (correlationId)
+  B->>O: deliver reply
+</pre>
+</figure>
+
+<h3>Three rules you cannot skip</h3>
+<ul>
+  <li><strong>Idempotency.</strong> Brokers deliver <em>at least once</em>; design consumers so reprocessing a message is
+  harmless (track processed message ids).</li>
+  <li><strong>Ordering.</strong> Use a partition/ordering key (e.g. <code>orderId</code>) so related messages stay in order.</li>
+  <li><strong>Reliable publishing.</strong> Don't lose messages on a crash between "DB commit" and "publish" — use the
+  <a href="ref:transactional-messaging">transactional outbox</a>.</li>
+</ul>
+
+<h2>Improving availability by removing synchronous calls</h2>
+<p>The book's flagship example: instead of Order Service synchronously calling Consumer/Kitchen/Accounting at order time,
+each service <em>subscribes to events</em> and keeps a local replica of the data it needs. Now Order Service can create an
+order even if the others are momentarily down — availability stops multiplying downward. This is the <a href="ref:saga">saga</a>
+machinery in disguise.</p>
+
+<h2>In the wild — brokers &amp; who uses them</h2>
+<ul>
+  <li><strong>Apache Kafka</strong> — the de-facto log-based streaming backbone (event sourcing, replay, high throughput
+  500k–1M+ msg/s). As of <strong>Kafka 4.0 (2025)</strong> ZooKeeper is gone — KRaft makes it a single-binary deploy.</li>
+  <li><strong>RabbitMQ</strong> — rich routing (direct/topic/fanout/headers), great for task queues &amp; competing
+  consumers; lowest latency at moderate scale.</li>
+  <li><strong>Apache Pulsar</strong> — separates compute (brokers) from storage (BookKeeper); built-in multi-tenancy,
+  geo-replication, tiered storage.</li>
+  <li><strong>NATS / JetStream</strong> — tiny, sub-millisecond; CNCF graduated. <strong>AWS SQS/SNS</strong>,
+  <strong>Google Pub/Sub</strong> — managed cloud options.</li>
+</ul>
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Choosing a broker</div>
+<p>Need ordered, replayable event streams + consumer groups → <strong>Kafka</strong>. Need flexible routing and classic
+work queues with no replay → <strong>RabbitMQ</strong>. Need the lightest possible footprint → <strong>NATS</strong>.
+Need multi-region with tight RPOs → <strong>Pulsar</strong>.</p>
+</div></div>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Non-idempotent consumers</strong> — duplicate delivery double-charges, double-ships. Track message ids.</li>
+<li><strong>Lost messages</strong> on the dual-write gap — use the <a href="ref:transactional-messaging">outbox</a>.</li>
+<li><strong>Ignoring ordering</strong> — interleaved events corrupt state; key by aggregate id.</li>
+<li><strong>No dead-letter handling</strong> — poison messages block the queue forever.</li>
+<li><strong>Async everywhere</strong> — some flows really do need a synchronous reply; don't be dogmatic.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Messaging decouples services in <strong>time</strong> → big availability gains over <a href="ref:rpi">synchronous RPI</a>.</li>
+<li>Know your message kinds (command/document/event) and channels (point-to-point / pub-sub).</li>
+<li>Always design for <strong>at-least-once</strong> delivery: idempotent consumers + ordering keys.</li>
+<li>Publish reliably with the <a href="ref:transactional-messaging">transactional outbox</a>; it underpins <a href="ref:saga">sagas</a> and <a href="ref:event-sourcing">event sourcing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A consumer crashes after doing its work but <em>before</em> acknowledging the message. What happens next, and what
+must the consumer guarantee?</p>
+<details><summary>Show answer</summary>
+<p>The broker, not having received an ack, redelivers the message — so it's processed twice. The consumer must therefore
+be <strong>idempotent</strong>: e.g., record each handled message id in the same local transaction as its effect, and
+skip messages it has already processed. At-least-once delivery makes idempotency non-negotiable.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:rpi">Remote procedure invocation</a> · <a href="ref:transactional-messaging">Transactional messaging</a> ·
+<a href="ref:saga">Saga</a> · <a href="ref:domain-event">Domain event</a> · <a href="ref:event-sourcing">Event sourcing</a></p>

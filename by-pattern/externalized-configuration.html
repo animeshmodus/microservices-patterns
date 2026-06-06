@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Supply configuration (endpoints, credentials) to a service at runtime — push and pull models.">
+  <title>Externalized Configuration · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html" class="active"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Externalized Configuration</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Intro">Intro</span> <a class="badge" href="../by-category/cross-cutting.html">Cross-Cutting Concerns</a> <a class="badge badge--ch" href="../by-chapter/ch11.html">Chapter 11</a></div>
+      <h1>Externalized Configuration</h1>
+      <p class="page-sub">Supply configuration (endpoints, credentials) to a service at runtime — push and pull models.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-externalized-configuration"><div class="tags"><span class="badge badge--pat">Externalized configuration</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Don't bake environment-specific settings (database URLs,
+  credentials, feature flags) into the build — supply them to the service <em>at runtime</em>, either pushed in
+  (env vars / mounted files) or pulled from a configuration/secret server, so one immutable artifact runs unchanged in
+  every environment.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>The same build must run in <strong>dev / staging / prod</strong>.</li>
+      <li>You have <strong>secrets</strong> that must never live in source or images.</li>
+      <li>You want to change config without rebuilding/redeploying.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Anti-patterns to kill</h4>
+    <ul>
+      <li>Hard-coded endpoints/credentials in code or the image.</li>
+      <li>Per-environment branches/builds of the same service.</li>
+      <li>Secrets committed to Git.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: config differs per environment, builds shouldn't</h2>
+<p>A service connects to different databases, brokers and dependencies in dev, staging and prod, and needs secrets it must
+never expose. If those values are compiled into the artifact, you end up with environment-specific builds, leaked
+credentials, and "works on my machine" drift. The Twelve-Factor App rule: <em>strictly separate config from code</em>.</p>
+
+<h2>The pattern: inject configuration at runtime</h2>
+<p>Build one immutable artifact; provide its configuration externally when it runs. There are two delivery styles:</p>
+<figure class="arch">
+  <figcaption>Architecture — push vs pull configuration</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="arch-group" data-label="Push model">
+      <div class="node node--ext"><span class="node-kind">Platform</span><span class="node-name">Env vars / mounted files</span></div>
+      <div class="flow-arrow"><span>at startup</span></div>
+      <div class="node node--service"><span class="node-name">Service</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>or</span></div>
+    <div class="arch-group" data-label="Pull model">
+      <div class="node node--service"><span class="node-name">Service</span></div>
+      <div class="flow-arrow"><span>fetch on boot/refresh</span></div>
+      <div class="node node--gateway"><span class="node-kind">Config / secret server</span><span class="node-name">Config Server · Vault</span></div>
+    </div>
+  </div></div>
+</figure>
+<ul>
+  <li><strong>Push</strong> — the deployment platform injects config via <strong>environment variables</strong> or mounted
+  files when the service starts (e.g. Kubernetes ConfigMaps/Secrets). Simple, no extra runtime dependency.</li>
+  <li><strong>Pull</strong> — the service fetches config from a <strong>config server</strong> or
+  <strong>secret store</strong> on startup (and can refresh). Centralised, supports dynamic updates and rich secret
+  management.</li>
+</ul>
+
+<h2>How it works — and secrets get special treatment</h2>
+<ul>
+  <li><strong>Layered config:</strong> sensible defaults in the artifact, overridden by environment-specific values.</li>
+  <li><strong>Secrets ≠ config:</strong> credentials/keys belong in a <em>secret manager</em> (encrypted at rest, access-controlled, audited, ideally dynamically issued and short-lived) — not in plain ConfigMaps or Git.</li>
+  <li><strong>Refresh:</strong> pull-based setups can hot-reload some values (e.g. feature flags) without a restart.</li>
+  <li>This is a core responsibility of the <a href="microservice-chassis.html">microservice chassis</a>.</li>
+</ul>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · One image, three environments</span>
+<h3>Promote the exact artifact you tested</h3>
+<p>The Order Service container built in CI is promoted unchanged from staging to prod. Kubernetes injects the right
+<code>DB_URL</code> via a ConfigMap and the DB password via a Secret sourced from Vault; the prod database credential is a
+short-lived, dynamically-issued Vault lease. Nothing environment-specific is ever rebuilt — what you tested is what ships.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Kubernetes ConfigMaps &amp; Secrets</strong> — the default push mechanism for containerised services.</li>
+  <li><strong>HashiCorp Vault</strong> — secrets management with dynamic, short-lived credentials and encryption-as-a-service.</li>
+  <li><strong>Spring Cloud Config</strong> / <strong>Consul KV</strong> — centralised pull-based config servers.</li>
+  <li><strong>AWS Parameter Store / Secrets Manager</strong>, <strong>Azure Key Vault</strong>, <strong>GCP Secret
+  Manager</strong> — managed cloud equivalents.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Secrets in images/Git</strong> — the classic breach vector; use a secret manager.</li>
+<li><strong>Plaintext Kubernetes Secrets</strong> — base64 is not encryption; enable encryption-at-rest / external secret stores.</li>
+<li><strong>Config drift</strong> — hand-edited prod config diverging from source of truth; manage config as code.</li>
+<li><strong>Restart-only changes</strong> — no way to flip a flag without redeploy; add refresh where it matters.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li><strong>Separate config from code</strong> — one immutable artifact, runtime-injected settings.</li>
+<li><strong>Push</strong> (env vars / ConfigMaps) is simplest; <strong>pull</strong> (config server) centralises &amp; enables refresh.</li>
+<li>Treat <strong>secrets</strong> specially — a real secret manager (Vault, cloud KMS), never Git or plain images.</li>
+<li>It's a standard duty of the <a href="microservice-chassis.html">microservice chassis</a> and ties into <a href="security-access-token.html">security</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is promoting the <em>same</em> container image through environments (with externalised config) safer than building
+a separate image per environment?</p>
+<details><summary>Show answer</summary>
+<p>Because the artifact you tested in staging is byte-for-byte what runs in prod — only the injected configuration differs.
+Per-environment builds reintroduce the risk that prod runs subtly different code/dependencies than what you validated,
+and they couple config changes to rebuilds. Externalised config gives you "build once, run anywhere," with environment
+differences confined to data, not code.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="microservice-chassis.html">Microservice chassis</a> · <a href="deployment-patterns.html">Deployment</a> ·
+<a href="security-access-token.html">Access token</a> · <a href="observability.html">Observability</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="security-access-token.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Microservice Security &amp; Access Token</span></a>
+      <a class="next" href="observability.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Observability</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

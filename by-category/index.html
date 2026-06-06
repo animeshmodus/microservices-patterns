@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Browse microservices patterns by theme.">
+  <title>By Category · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html" class="active"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Categories</div>
+    <nav class="nav">
+      <a href="application-architecture.html"><span class="nidx">01</span><span>Application Architecture</span></a>
+      <a href="decomposition.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="communication.html"><span class="nidx">03</span><span>Communication Styles</span></a>
+      <a href="reliability.html"><span class="nidx">04</span><span>Reliable Communication</span></a>
+      <a href="service-discovery.html"><span class="nidx">05</span><span>Service Discovery</span></a>
+      <a href="transactional-messaging.html"><span class="nidx">06</span><span>Transactional Messaging</span></a>
+      <a href="data-consistency.html"><span class="nidx">07</span><span>Data Consistency</span></a>
+      <a href="business-logic.html"><span class="nidx">08</span><span>Business Logic Design</span></a>
+      <a href="querying.html"><span class="nidx">09</span><span>Querying</span></a>
+      <a href="external-api.html"><span class="nidx">10</span><span>External API</span></a>
+      <a href="testing.html"><span class="nidx">11</span><span>Testing</span></a>
+      <a href="security.html"><span class="nidx">12</span><span>Security</span></a>
+      <a href="cross-cutting.html"><span class="nidx">13</span><span>Cross-Cutting Concerns</span></a>
+      <a href="observability.html"><span class="nidx">14</span><span>Observability</span></a>
+      <a href="deployment.html"><span class="nidx">15</span><span>Deployment</span></a>
+      <a href="refactoring.html"><span class="nidx">16</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span>By Category</nav>
+    <header class="page-head">
+      <div class="page-meta"></div>
+      <h1>Browse by Category</h1>
+      <p class="page-sub">Patterns grouped into families.</p>
+    </header>
+
+    <article class="prose">
+      <p class="page-sub" style="margin-bottom:1.2rem">16 thematic categories. Each page gathers a family of related patterns.</p><div class="view-cards"><a class="view-card" href="application-architecture.html"><h3>Application Architecture</h3><p>The two ends of the spectrum — the monolith and the microservice architecture — and how to choose.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Monolith vs. Microservice Architecture</span></div></a>
+<a class="view-card" href="decomposition.html"><h3>Decomposition Strategies</h3><p>How to slice a system into services along business capabilities and DDD subdomains.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Decompose by Business Capability</span><span class="badge">Decompose by Subdomain (DDD)</span></div></a>
+<a class="view-card" href="communication.html"><h3>Communication Styles</h3><p>How services talk: synchronous RPI (REST/gRPC) and asynchronous messaging.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Remote Procedure Invocation (REST &amp; gRPC)</span><span class="badge">Asynchronous Messaging</span></div></a>
+<a class="view-card" href="reliability.html"><h3>Reliable Communication</h3><p>Keeping the system up when a dependency is slow or down — the circuit breaker and friends.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Circuit Breaker</span></div></a>
+<a class="view-card" href="service-discovery.html"><h3>Service Discovery</h3><p>Finding the network location of service instances in a dynamic, ever-changing fleet.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Service Discovery</span></div></a>
+<a class="view-card" href="transactional-messaging.html"><h3>Transactional Messaging</h3><p>Publishing messages reliably as part of a database transaction (outbox, CDC, log tailing).</p><div class="tags" style="margin-top:.6rem"><span class="badge">Transactional Messaging (Outbox &amp; CDC)</span></div></a>
+<a class="view-card" href="data-consistency.html"><h3>Data Consistency</h3><p>Maintaining consistency across services without distributed transactions — the Saga pattern.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Saga</span></div></a>
+<a class="view-card" href="business-logic.html"><h3>Business Logic Design</h3><p>Organising domain logic with transaction scripts, domain models, aggregates and domain events.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Business Logic: Domain Model &amp; Aggregate</span><span class="badge">Domain Event</span><span class="badge">Event Sourcing</span></div></a>
+<a class="view-card" href="querying.html"><h3>Querying</h3><p>Answering queries that span services: API composition and CQRS read models.</p><div class="tags" style="margin-top:.6rem"><span class="badge">API Composition</span><span class="badge">CQRS</span></div></a>
+<a class="view-card" href="external-api.html"><h3>External API</h3><p>Giving clients a clean front door — the API gateway and backends-for-frontends.</p><div class="tags" style="margin-top:.6rem"><span class="badge">API Gateway</span><span class="badge">Backends for Frontends (BFF)</span></div></a>
+<a class="view-card" href="testing.html"><h3>Testing</h3><p>Testing services in isolation and trusting their integrations — contract &amp; component tests.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Contract &amp; Component Testing</span></div></a>
+<a class="view-card" href="security.html"><h3>Security</h3><p>Authenticating and authorising requests across a service graph with access tokens.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Microservice Security &amp; Access Token</span></div></a>
+<a class="view-card" href="cross-cutting.html"><h3>Cross-Cutting Concerns</h3><p>Concerns every service shares: externalised configuration and the microservice chassis.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Externalized Configuration</span><span class="badge">Microservice Chassis</span></div></a>
+<a class="view-card" href="observability.html"><h3>Observability</h3><p>Understanding a running system: health checks, logs, metrics, tracing, exceptions, audit.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Observability</span></div></a>
+<a class="view-card" href="deployment.html"><h3>Deployment</h3><p>Packaging and running services: containers, Kubernetes, serverless, service mesh &amp; sidecars.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Service Mesh &amp; Sidecar</span><span class="badge">Deployment: Containers, Kubernetes &amp; Serverless</span></div></a>
+<a class="view-card" href="refactoring.html"><h3>Refactoring to Microservices</h3><p>Escaping the monolith incrementally with the strangler application and anti-corruption layer.</p><div class="tags" style="margin-top:.6rem"><span class="badge">Strangler Application</span><span class="badge">Anti-Corruption Layer</span></div></a></div>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <span></span><span></span>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

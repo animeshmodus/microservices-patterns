@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Organise domain logic: transaction script vs domain model, and DDD aggregates as consistency boundaries.">
+  <title>Business Logic: Domain Model &amp; Aggregate · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html" class="active"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Business Logic: Domain Model &amp; Aggregate</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/business-logic.html">Business Logic Design</a> <a class="badge badge--ch" href="../by-chapter/ch05.html">Chapter 5</a></div>
+      <h1>Business Logic: Domain Model &amp; Aggregate</h1>
+      <p class="page-sub">Organise domain logic: transaction script vs domain model, and DDD aggregates as consistency boundaries.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-business-logic"><div class="tags"><span class="badge badge--pat">Transaction script</span><span class="badge badge--pat">Domain model</span><span class="badge badge--pat">Aggregate</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Organise a service's domain logic either as simple
+  procedural <em>transaction scripts</em> or as an object-oriented <em>domain model</em> — and in a microservice, structure
+  that model around DDD <em>aggregates</em>, because an aggregate is the unit of consistency you can safely update in one
+  local transaction.</div>
+  <div class="g-when">
+    <h4>Domain model + aggregates when</h4>
+    <ul>
+      <li>The business logic is <strong>complex</strong> and evolving.</li>
+      <li>You need clear <strong>consistency boundaries</strong> across services.</li>
+      <li>You'll publish <a href="domain-event.html">domain events</a> or use <a href="event-sourcing.html">event sourcing</a>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Transaction script is fine when</h4>
+    <ul>
+      <li>Logic is <strong>thin CRUD</strong> with little behaviour.</li>
+      <li>The service is small and unlikely to grow complex.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: where does the logic live?</h2>
+<p>Every service has business rules. Two classic ways to organise them:</p>
+<ul>
+  <li><strong>Transaction script</strong> — a procedure per request that does the work, with data in dumb structs. Great
+  for simple logic; degrades into tangled spaghetti as complexity grows.</li>
+  <li><strong>Domain model</strong> — a web of objects that hold <em>both</em> data and behaviour. Scales with complexity;
+  the foundation of Domain-Driven Design.</li>
+</ul>
+<p>But a domain model in a distributed system raises a new question the monolith never had: <em>what set of objects can I
+update together in a single transaction?</em> Because each service has one database and you can't span a transaction
+across services, you need explicit consistency boundaries. That's the <strong>aggregate</strong>.</p>
+
+<h2>The pattern: aggregates as consistency boundaries</h2>
+<p>An <strong>aggregate</strong> is a cluster of domain objects treated as a single unit. It has a single
+<strong>aggregate root</strong> (the only entry point) and a clear boundary. The <code>Order</code> aggregate, for
+example, owns its <code>OrderLineItems</code> and <code>DeliveryInfo</code>.</p>
+
+<figure class="diagram">
+<figcaption>The Order aggregate — a root plus the objects inside its boundary</figcaption>
+<pre class="mermaid">
+classDiagram
+  class Order {
+    +OrderId id
+    +OrderState state
+    +place()
+    +cancel()
+    +revise()
+  }
+  class OrderLineItem {
+    +menuItemId
+    +quantity
+  }
+  class DeliveryInfo {
+    +address
+    +deliveryTime
+  }
+  Order "1" *-- "many" OrderLineItem
+  Order "1" *-- "1" DeliveryInfo
+</pre>
+</figure>
+
+<h3>The two rules that matter most</h3>
+<ol>
+  <li><strong>Reference other aggregates by identity, not by object reference.</strong> An <code>Order</code> holds a
+  <code>consumerId</code>, not a <code>Consumer</code> object. This keeps aggregates loosely coupled and lets each live in
+  its own service.</li>
+  <li><strong>One transaction updates exactly one aggregate.</strong> An aggregate is the consistency boundary. To keep
+  <em>several</em> aggregates consistent (in the same or different services), use a <a href="saga.html">saga</a> driven by
+  <a href="domain-event.html">domain events</a> — not a bigger transaction.</li>
+</ol>
+
+<figure class="arch">
+  <figcaption>Architecture — aggregates map to transactions and to services</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="arch-group" data-label="Order Service (1 txn = 1 aggregate)">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Order</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>event / saga</span></div>
+    <div class="arch-group" data-label="Kitchen Service">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Ticket</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>event / saga</span></div>
+    <div class="arch-group" data-label="Consumer Service">
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Consumer</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>Aggregate granularity — a design dial</h2>
+<p>Bigger aggregates give stronger consistency but worse concurrency and bigger transactions; smaller aggregates give
+better scalability but push more consistency work onto sagas. The book's advice: prefer <strong>small aggregates</strong>,
+and reach for sagas to coordinate across them.</p>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Why "Order" and "Restaurant" are separate aggregates</span>
+<h3>Designing for independent change &amp; scale</h3>
+<p>An <code>Order</code> references a <code>restaurantId</code> rather than embedding the <code>Restaurant</code>. That
+lets Order Service and Restaurant Service be separate services with separate databases, updated in separate transactions.
+When a restaurant changes its menu, an event flows to Order Service, which updates its own replica — no cross-service
+transaction needed.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li>Aggregates come from Eric Evans' <em>Domain-Driven Design</em> and Vaughn Vernon's "Effective Aggregate Design".</li>
+  <li><strong>jMolecules</strong> and <strong>Spring Modulith</strong> let you express aggregates/entities/value objects in
+  code and verify the rules with <strong>ArchUnit</strong> tests.</li>
+  <li>The aggregate-per-transaction rule is exactly what makes <a href="event-sourcing.html">event sourcing</a> and
+  <a href="domain-event.html">domain events</a> clean to implement.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Anemic domain model</strong> — objects with getters/setters and no behaviour; all logic in "service" classes.
+DDD vocabulary, transaction-script reality.</li>
+<li><strong>Object references across aggregates</strong> — embedding a <code>Restaurant</code> object inside
+<code>Order</code> couples them and breaks the one-DB-per-service model.</li>
+<li><strong>God aggregates</strong> — huge boundaries that serialise unrelated updates and create contention.</li>
+<li><strong>Multi-aggregate transactions</strong> — trying to update two aggregates atomically; use a <a href="saga.html">saga</a>.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Simple logic → <strong>transaction script</strong>; complex logic → <strong>domain model</strong>.</li>
+<li>An <strong>aggregate</strong> is the consistency boundary: <em>one transaction updates one aggregate</em>.</li>
+<li>Reference other aggregates <strong>by id</strong>, not by object — that's what lets them live in separate services.</li>
+<li>Coordinate across aggregates with <a href="domain-event.html">domain events</a> + <a href="saga.html">sagas</a>.</li>
+<li>Prefer <strong>small</strong> aggregates; avoid the anemic-model anti-pattern.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why must the <code>Order</code> aggregate reference the customer by <code>consumerId</code> rather than holding a
+<code>Consumer</code> object?</p>
+<details><summary>Show answer</summary>
+<p>Because <code>Consumer</code> is a different aggregate living in a different service/database. Holding a direct object
+reference would couple the two, imply you could load/update them together, and tempt a multi-aggregate transaction that's
+impossible across services. Referencing by id keeps the boundary crisp: each aggregate is updated in its own transaction,
+and cross-aggregate consistency is handled by events/sagas.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="decompose-by-subdomain.html">Decompose by subdomain</a> · <a href="domain-event.html">Domain event</a> ·
+<a href="event-sourcing.html">Event sourcing</a> · <a href="saga.html">Saga</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="saga.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Saga</span></a>
+      <a class="next" href="domain-event.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Domain Event</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

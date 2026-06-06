@@ -1,0 +1,145 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Define services around <em>what the business does</em> — its
+  capabilities (Order Management, Delivery, Billing) — because capabilities are stable even as the <em>how</em> changes,
+  so service boundaries drawn this way rarely need to move.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You're defining a service decomposition <strong>top-down</strong> from the business.</li>
+      <li>You want boundaries that map cleanly to <strong>team ownership</strong>.</li>
+      <li>The organisation already thinks in capabilities / value streams.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You're tempted to make a service per <strong>database table</strong> or technical layer.</li>
+      <li>Capabilities are defined by IT, not by <strong>business experts</strong>.</li>
+      <li>You haven't aligned team structure (Conway's Law will fight you).</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: where do the boundaries go?</h2>
+<p>You've decided to build microservices. But <em>how many</em> and <em>which</em>? Decompose badly and you get a
+<a href="ref:monolith-vs-microservices">distributed monolith</a> or a swarm of chatty nano-services. You need a principled
+way to draw lines — and it must produce <strong>stable</strong> boundaries, because moving a boundary later (splitting a
+database, re-homing logic) is expensive.</p>
+
+<h2>The pattern: services mirror business capabilities</h2>
+<p>A <strong>business capability</strong> is something an organisation does to generate value — independent of <em>how</em>
+it's currently implemented. FTGO's capabilities include <em>Order Management</em>, <em>Restaurant/Menu Management</em>,
+<em>Delivery Management</em>, <em>Accounting</em>. You identify the capabilities (often hierarchically), then define one
+service per capability (or per leaf sub-capability).</p>
+
+<figure class="arch">
+  <figcaption>Architecture — FTGO services, one per business capability</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Capability map</span><span class="node-name">FTGO</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Order Management</span></div>
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Restaurant Mgmt</span></div>
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Delivery Mgmt</span></div>
+      <div class="node node--service"><span class="node-kind">Capability</span><span class="node-name">Accounting</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<p>Because capabilities reflect <em>what</em> the business is, not <em>how</em> it works today, they're stable. The
+implementation behind "Delivery Management" can change radically; the capability — and therefore the service boundary —
+stays put.</p>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">Capability, not function or entity</div>
+<p>Decompose around a capability (<em>Order Management</em>), not a verb (<em>OrderController</em>) or a table
+(<em>an Address service</em>). Capability boundaries are cohesive and coarse enough to avoid the chatty, brittle
+nano-services you get from one-service-per-entity.</p>
+</div></div>
+
+<h2>How it works</h2>
+<ol>
+  <li><strong>Identify capabilities</strong> from the business — analyse what the organisation does, its value streams,
+  and the structure of the business. Workshops like <em>Event Storming</em> help.</li>
+  <li><strong>Decompose hierarchically</strong> if needed — e.g. <em>Customer Management</em> → Identity, Profile,
+  Preferences — but only split when scaling or team needs justify it.</li>
+  <li><strong>Map each (sub)capability to a service</strong> that owns its data and exposes an API.</li>
+  <li><strong>Align teams to capabilities</strong> — apply the <em>Inverse Conway Maneuver</em>: shape teams to match
+  the architecture you want.</li>
+</ol>
+
+<figure class="diagram">
+<figcaption>Flow — from business analysis to capability-aligned services &amp; teams</figcaption>
+<pre class="mermaid">
+flowchart LR
+  A[Analyse the business] --> B[Identify capabilities]
+  B --> C[Decompose into<br/>sub-capabilities]
+  C --> D[One service per<br/>leaf capability]
+  D --> E[One team owns<br/>each service]
+  E -. Conway's Law .-> D
+</pre>
+</figure>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Banking</span>
+<h3>A retail bank's capability map</h3>
+<p>Top-level capabilities: <em>Account Management, Lending, Payments, Fraud Detection, Customer Onboarding</em>.
+<em>Payments</em> decomposes into Domestic Transfers, International Wire, Card Processing. A new "Buy Now Pay Later"
+product is then composed from <em>Lending</em> + <em>Payments</em> without touching Account Management — capability
+reuse in action.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce</span>
+<h3>Scaling only what's hot on Black Friday</h3>
+<p>Capabilities: Catalog, Inventory, Pricing &amp; Promotions, Cart, Checkout, Fulfilment, Returns, Loyalty. The
+Black-Friday load hits Catalog and Pricing hardest — and because they're separate capability-services, they scale
+(scale-cube X-axis) independently of Fulfilment.</p>
+</div>
+
+<h2>In the wild — tooling &amp; practice</h2>
+<ul>
+  <li><strong>Team Topologies</strong> — its "stream-aligned team" maps directly onto a business capability owner; the
+  most-cited modern framework for organising around services.</li>
+  <li><strong>Event Storming</strong> (Alberto Brandolini) — a collaborative workshop to discover capabilities and their
+  boundaries before any code.</li>
+  <li><strong>Backstage</strong> (Spotify/CNCF) — an internal developer portal that catalogues which team owns which
+  capability/service, essential once you have dozens.</li>
+  <li><strong>Amazon &amp; Spotify</strong> — capability-aligned ownership ("you build it, you run it"; squads aligned to
+  Playlists, Discovery, Payments) are the textbook examples.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Granularity mismatch</strong> — one service per CRUD entity instead of per capability → nano-services.</li>
+<li><strong>Shared database across "services"</strong> — kills independent deployability; it's a distributed monolith.</li>
+<li><strong>Ignoring Conway's Law</strong> — defining ideal services but keeping teams organised by tech layer; the org
+will reshape the architecture back.</li>
+<li><strong>Capabilities defined by IT</strong> rather than business experts — boundaries end up mirroring old silos.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Draw service boundaries around <strong>business capabilities</strong> — stable because they describe <em>what</em>, not <em>how</em>.</li>
+<li>Capability ≠ function ≠ entity; aim for cohesive, coarse-grained services.</li>
+<li>Each capability-service <strong>owns its data</strong> and is owned by <strong>one team</strong>.</li>
+<li>Pair with <a href="ref:decompose-by-subdomain">Decompose by subdomain</a> — they usually agree and reinforce each other.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is "Order Management" a better service boundary than "OrderValidationService", "OrderPricingService" and
+"OrderPersistenceService"?</p>
+<details><summary>Show answer</summary>
+<p>The three technical services split <em>one</em> cohesive capability across the network: a single "place order"
+operation now needs multiple synchronous hops, shares order data awkwardly, and changes ripple across all three. "Order
+Management" keeps the cohesive logic and its data together, is independently deployable, and maps to one owning team.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:decompose-by-subdomain">Decompose by subdomain</a> ·
+<a href="ref:monolith-vs-microservices">Microservice architecture</a> · <a href="ref:business-logic">Domain model &amp; aggregate</a></p>

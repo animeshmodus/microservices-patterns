@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Locate service instances dynamically — client-side, server-side, self- and 3rd-party registration.">
+  <title>Service Discovery · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html" class="active"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Service Discovery</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/service-discovery.html">Service Discovery</a> <a class="badge badge--ch" href="../by-chapter/ch03.html">Chapter 3</a></div>
+      <h1>Service Discovery</h1>
+      <p class="page-sub">Locate service instances dynamically — client-side, server-side, self- and 3rd-party registration.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-service-discovery"><div class="tags"><span class="badge badge--pat">Self registration</span><span class="badge badge--pat">Client-side discovery</span><span class="badge badge--pat">Server-side discovery</span><span class="badge badge--pat">3rd party registration</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Service instances come and go (autoscaling, restarts,
+  failures) and their network locations keep changing, so clients can't hard-code addresses — service discovery uses a
+  <em>service registry</em> to track live instances and hand callers a current location.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>Service instances are <strong>dynamic</strong> (cloud, containers, autoscaling).</li>
+      <li>Callers need to find healthy instances <strong>at runtime</strong>.</li>
+      <li>You want client-side load-balancing or smart routing.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Mostly automatic when</h4>
+    <ul>
+      <li>You run on <strong>Kubernetes</strong> — DNS + Services do server-side discovery for you.</li>
+      <li>A <a href="service-mesh-sidecar.html">service mesh</a> handles it transparently.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: where is the service right now?</h2>
+<p>In a modern deployment, instance IP:port assignments are dynamic and short-lived. An instance might be on
+<code>10.0.3.7:8443</code> now and gone in five minutes. Hard-coding endpoints or editing config on every scale event is
+hopeless. We need a live phone-book of "which instances of service X are healthy, and where".</p>
+
+<h2>The pattern: a service registry + four micro-patterns</h2>
+<p>At the centre is the <strong>service registry</strong> — a database of services, their instances and locations.
+Around it sit four patterns, split into two questions: <em>how do instances get registered?</em> and <em>how do clients
+look them up?</em></p>
+
+<figure class="arch">
+  <figcaption>Architecture — the service registry at the centre</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="node node--client"><span class="node-kind">Caller</span><span class="node-name">Client / Router</span></div>
+    <div class="flow-arrow is-bi"><span>query</span></div>
+    <div class="node node--gateway"><span class="node-kind">Registry</span><span class="node-name">Service Registry</span><span class="node-sub">Eureka · Consul · etcd</span></div>
+    <div class="flow-arrow is-bi"><span>register + heartbeat</span></div>
+    <div class="arch-stack">
+      <div class="node node--service"><span class="node-name">Order inst #1</span></div>
+      <div class="node node--service"><span class="node-name">Order inst #2</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h3>Registration: who writes to the registry?</h3>
+<ul>
+  <li><strong>Self-registration</strong> — each instance registers itself on startup and sends heartbeats. Simple, but
+  couples the service to the registry.</li>
+  <li><strong>3rd-party registration</strong> — a separate <em>registrar</em> watches the deployment environment and
+  registers/deregisters instances. Keeps service code clean (this is essentially what Kubernetes does).</li>
+</ul>
+
+<h3>Lookup: who queries the registry?</h3>
+<figure class="diagram">
+<figcaption>Client-side discovery — the client picks an instance</figcaption>
+<pre class="mermaid">
+flowchart LR
+  C[Client] -- 1: query 'order-service' --> R[(Registry)]
+  R -- 2: list of instances --> C
+  C -- 3: load-balance &amp; call --> S1[Order inst #1]
+</pre>
+</figure>
+<figure class="diagram">
+<figcaption>Server-side discovery — a router/load-balancer hides the registry</figcaption>
+<pre class="mermaid">
+flowchart LR
+  C[Client] -- 1: call order-service --> LB[Router / Load Balancer]
+  LB -- 2: query --> R[(Registry)]
+  LB -- 3: forward --> S1[Order inst #1]
+</pre>
+</figure>
+<ul>
+  <li><strong>Client-side discovery</strong> — the client queries the registry and load-balances itself (e.g. Netflix
+  Eureka + Ribbon). More control, but every client needs discovery logic per language.</li>
+  <li><strong>Server-side discovery</strong> — the client just calls a stable router/DNS name; the router does the
+  lookup (e.g. Kubernetes Services, AWS load balancers). Simplest for clients — the modern default.</li>
+</ul>
+
+<h2>Variants at a glance</h2>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Concern</th><th>Option A</th><th>Option B</th></tr></thead>
+<tbody>
+<tr><td>Registration</td><td>Self-registration (service registers itself)</td><td>3rd-party registration (a registrar does it)</td></tr>
+<tr><td>Lookup</td><td>Client-side (client queries + balances)</td><td>Server-side (router/DNS queries)</td></tr>
+<tr><td>Couples service to registry?</td><td>Self: yes</td><td>3rd-party / server-side: no</td></tr>
+<tr><td>Typical tech</td><td>Eureka + Ribbon (Spring)</td><td>Kubernetes DNS/Services, Consul + Envoy</td></tr>
+</tbody>
+</table></div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Autoscaling</span>
+<h3>Black-Friday scale-out</h3>
+<p>Checkout scales from 3 to 120 instances in 90 seconds. With server-side discovery on Kubernetes, each new pod is
+registered automatically and the <code>checkout</code> Service DNS name immediately load-balances across all 120 — no
+client changes, no config edits. When pods die, failed health checks deregister them within seconds.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Kubernetes</strong> — built-in service discovery via internal DNS + <code>kube-proxy</code> (server-side,
+  3rd-party registration). For most teams in 2025 this <em>is</em> their discovery layer.</li>
+  <li><strong>HashiCorp Consul</strong> — registry <em>and</em> service mesh; supports both lookup styles, multi-datacenter,
+  rich health checks; integrates with Envoy.</li>
+  <li><strong>Netflix Eureka</strong> — the classic client-side registry for Spring Cloud; still used, but its role is
+  shrinking as Kubernetes-native and mesh-based discovery take over.</li>
+  <li><strong>etcd</strong> (the store behind Kubernetes), <strong>AWS Cloud Map</strong>, <strong>Nacos</strong> — other
+  registries.</li>
+</ul>
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Rule of thumb (2025)</div>
+<p>On Kubernetes, use its native discovery (server-side). Outside Kubernetes / multi-platform, reach for Consul. Pick
+Eureka mainly if you're invested in the Spring Cloud Netflix stack. A service mesh makes discovery invisible to app code.</p>
+</div></div>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>No health checks / heartbeats</strong> — the registry routes traffic to dead instances ("zombie" entries).</li>
+<li><strong>Treating the registry as always-consistent</strong> — registries are eventually consistent; clients must
+tolerate stale entries (retry + circuit breaker).</li>
+<li><strong>Reinventing discovery on Kubernetes</strong> — running Eureka inside K8s usually just duplicates what the
+platform already does.</li>
+<li><strong>The registry as a single point of failure</strong> — run it clustered/HA.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A <strong>service registry</strong> tracks live instances so callers never hard-code locations.</li>
+<li>Two axes: <strong>registration</strong> (self vs 3rd-party) and <strong>lookup</strong> (client-side vs server-side).</li>
+<li><strong>Server-side + 3rd-party</strong> (Kubernetes) is the low-friction modern default.</li>
+<li>Combine with <a href="circuit-breaker.html">circuit breakers</a> — discovery data is eventually consistent.</li>
+<li>A <a href="service-mesh-sidecar.html">service mesh</a> can make discovery entirely transparent to your code.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Your team runs on Kubernetes but a senior dev wants to add Netflix Eureka "for service discovery". What's your
+concern?</p>
+<details><summary>Show answer</summary>
+<p>Kubernetes already provides service discovery (DNS-based, server-side, with automatic registration/deregistration via
+readiness probes). Adding Eureka duplicates that responsibility, adds a component to operate, and forces every service to
+embed client-side discovery logic. Unless there's a specific cross-cluster/multi-platform need Consul would serve better,
+lean on the platform's native discovery.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="rpi.html">Remote procedure invocation</a> · <a href="api-gateway.html">API gateway</a> ·
+<a href="service-mesh-sidecar.html">Service mesh &amp; sidecar</a> · <a href="deployment-patterns.html">Deployment</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="circuit-breaker.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Circuit Breaker</span></a>
+      <a class="next" href="transactional-messaging.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Transactional Messaging (Outbox &amp; CDC)</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

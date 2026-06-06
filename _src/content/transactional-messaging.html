@@ -1,0 +1,155 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> To update its database <em>and</em> publish a message
+  reliably, a service writes the message to an <em>outbox</em> table inside the same local transaction, then a separate
+  relay reads the outbox and publishes to the broker — so the two never get out of sync.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>A service must <strong>change state and emit an event/command</strong> atomically.</li>
+      <li>You're implementing <a href="ref:saga">sagas</a> or <a href="ref:event-sourcing">event-driven</a> flows.</li>
+      <li>Losing or duplicating events would corrupt business state.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You're tempted to "just publish after commit" — that's the bug this fixes.</li>
+      <li>You forget the consumer side must be <strong>idempotent</strong>.</li>
+      <li>Ordering across the outbox matters — preserve it.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: the dual-write trap</h2>
+<p>A service often needs to do two things as one logical step: <strong>commit a database change</strong> and
+<strong>publish a message</strong>. But the database and the broker are two separate systems. If you commit the DB and
+then crash before publishing, the event is lost forever. If you publish first and then the DB commit fails, you've
+announced something that never happened. You cannot wrap a normal DB transaction and a Kafka publish in one atomic
+operation — and 2PC is off the table.</p>
+
+<figure class="diagram">
+<figcaption>The dual-write problem — a crash between the two writes corrupts the system</figcaption>
+<pre class="mermaid">
+flowchart LR
+  A[Update DB] --> X{crash here?}
+  X -- yes --> L[message NEVER published<br/>state &amp; events diverge]
+  X -- no --> P[Publish to broker]
+  classDef bad fill:#7f1d1d,stroke:#f87171,color:#fff;
+  class L bad;
+</pre>
+</figure>
+
+<h2>The pattern: Transactional Outbox</h2>
+<p>Don't publish directly. Instead, in the <em>same</em> local transaction that updates the business tables, also insert
+the message into an <strong>OUTBOX</strong> table. Because it's one transaction, the message is saved if and only if the
+business change is saved. A separate <strong>message relay</strong> then reads the outbox and publishes to the broker,
+marking rows as sent.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — the transactional outbox and message relay</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Service</span><span class="node-name">Order Service</span></div>
+      <div class="flow-arrow"><span>1: one local txn</span></div>
+      <div class="arch-group" data-label="Service database (one transaction)">
+        <div class="node node--db"><span class="node-name">ORDER table</span></div>
+        <div class="node node--db"><span class="node-name">OUTBOX table</span></div>
+      </div>
+    </div>
+    <div class="flow-arrow is-down"><span>2: relay reads outbox</span></div>
+    <div class="arch-flow">
+      <div class="node node--ext"><span class="node-kind">Relay</span><span class="node-name">Message Relay</span><span class="node-sub">poller or CDC</span></div>
+      <div class="flow-arrow"><span>3: publish</span></div>
+      <div class="node node--broker"><span class="node-name">Kafka</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>How it works — two ways to relay</h2>
+<h3>1. Polling Publisher</h3>
+<p>The relay periodically <code>SELECT</code>s unsent rows from the outbox, publishes them, and marks them sent. Dead
+simple and portable, but polling adds load and latency, and you must be careful to preserve order and avoid double-sends.</p>
+
+<h3>2. Transaction Log Tailing (Change Data Capture)</h3>
+<p>The relay <em>tails the database's transaction log</em> (e.g. Postgres WAL, MySQL binlog) and publishes each outbox
+insert as it's committed — no polling, near-real-time, low overhead. This is the modern default, powered by
+<strong>Debezium</strong>.</p>
+<figure class="diagram">
+<figcaption>Sequence — outbox + CDC (Debezium) publishing to Kafka</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant S as Order Service
+  participant DB as Order DB
+  participant CDC as Debezium (log tailing)
+  participant K as Kafka
+  participant C as Consumer
+  S->>DB: BEGIN; insert ORDER + insert OUTBOX; COMMIT
+  CDC->>DB: read WAL / binlog
+  CDC->>K: publish outbox row as event
+  K->>C: deliver event (at least once)
+  C->>C: check message id (idempotent) then handle
+</pre>
+</figure>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">Outbox + Idempotent Consumer = effectively exactly-once</div>
+<p>The outbox guarantees <em>at-least-once</em> publishing. Pair it with an <strong>idempotent consumer</strong> (record
+each processed message id and skip duplicates) and you get effectively <em>exactly-once</em> business semantics — without
+distributed transactions.</p>
+</div></div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Order placement</span>
+<h3>"Order created" must always reach the kitchen</h3>
+<p>When Order Service creates an order, it inserts the <code>ORDER</code> row and an <code>OrderCreated</code> outbox row
+in one transaction. Debezium streams that to Kafka; Kitchen consumes it. Even if Order Service crashes the instant after
+commit, the event still flows — the kitchen never misses an order, and a redelivery is harmlessly deduplicated.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Debezium</strong> (2.5+ as of 2025) — the industry-standard CDC engine; runs as a Kafka Connect connector,
+  supports Postgres, MySQL, MongoDB, SQL Server, Oracle. It even has a dedicated <em>outbox event router</em>.</li>
+  <li><strong>Kafka Connect</strong> — hosts Debezium and routes/transforms the captured events.</li>
+  <li><strong>SeatGeek</strong> and many others have publicly described using the transactional outbox to make real-time
+  data distribution reliable.</li>
+  <li>Frameworks like <strong>Eventuate Tram</strong> provide outbox + relay out of the box (used in the book).</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>"Publish after commit" code</strong> — the exact dual-write bug; one crash and your events lie.</li>
+<li><strong>Non-idempotent consumers</strong> — at-least-once delivery <em>will</em> redeliver; dedupe by message id.</li>
+<li><strong>Losing order</strong> — publish/consume outbox rows in commit order (use ordering keys).</li>
+<li><strong>Outbox table growth</strong> — purge/archive sent rows, or the table balloons.</li>
+<li><strong>Polling too aggressively</strong> — tune interval, or switch to CDC for low latency + low load.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Never dual-write to DB + broker directly — write to an <strong>outbox table in the same transaction</strong>.</li>
+<li>A <strong>message relay</strong> publishes the outbox: <em>polling publisher</em> (simple) or <em>log tailing/CDC</em> (modern, real-time).</li>
+<li><strong>Debezium</strong> is the go-to CDC relay; it has a built-in outbox router.</li>
+<li>Outbox (at-least-once) + <strong>idempotent consumer</strong> ⇒ effectively exactly-once.</li>
+<li>This is the reliability foundation under <a href="ref:saga">sagas</a>, <a href="ref:domain-event">domain events</a> and <a href="ref:event-sourcing">event sourcing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is inserting into an OUTBOX table safe when publishing directly to Kafka after the commit is not?</p>
+<details><summary>Show answer</summary>
+<p>The outbox insert is part of the <em>same</em> local database transaction as the business change, so they commit (or
+roll back) together atomically — there's no window where one succeeded and the other didn't. Publishing to Kafka is a
+separate system: a crash between the DB commit and the publish leaves the two permanently inconsistent. The relay then
+publishes from the durably-committed outbox, so no event is ever lost.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:messaging">Asynchronous messaging</a> · <a href="ref:saga">Saga</a> ·
+<a href="ref:event-sourcing">Event sourcing</a> · <a href="ref:domain-event">Domain event</a></p>

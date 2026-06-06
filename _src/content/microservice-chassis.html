@@ -1,0 +1,119 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A microservice chassis is a framework (or set of libraries)
+  that handles the cross-cutting concerns every service needs — configuration, health checks, metrics, logging, tracing,
+  security, service discovery — so a new service starts production-ready and developers write business logic, not plumbing.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You're creating <strong>many services</strong> and don't want to re-solve the basics each time.</li>
+      <li>You want <strong>consistency</strong> in how services do config/health/metrics.</li>
+      <li>New services should be <strong>production-ready on day one</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>The chassis becomes a <strong>shared-library monolith</strong> everyone must upgrade in lockstep.</li>
+      <li>It encodes business logic (it should only do plumbing).</li>
+      <li>It conflicts with what a <a href="ref:service-mesh-sidecar">service mesh</a> already provides.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: every service re-implements the same plumbing</h2>
+<p>Before a service can do anything useful it needs <a href="ref:externalized-configuration">externalised
+configuration</a>, <a href="ref:observability">health checks, metrics, logging and tracing</a>,
+<a href="ref:service-discovery">service discovery</a> and <a href="ref:security-access-token">security</a>. Re-writing
+that for each of 40 services is wasteful and produces 40 subtly different implementations. The first service might take
+weeks just on plumbing.</p>
+
+<h2>The pattern: stand on a chassis</h2>
+<p>Like a car chassis carries the engine, wheels and electrics so designers focus on the body, a microservice chassis
+provides the cross-cutting machinery so developers focus on the domain. New services are scaffolded from a template that
+already wires it in.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — business logic on top, chassis underneath</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--service" style="align-self:center;max-width:420px"><span class="node-kind">You write this</span><span class="node-name">Business logic (domain, APIs)</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-group" data-label="Microservice chassis (provided)">
+      <div class="node node--gateway"><span class="node-name">Config</span></div>
+      <div class="node node--gateway"><span class="node-name">Health</span></div>
+      <div class="node node--gateway"><span class="node-name">Metrics</span></div>
+      <div class="node node--gateway"><span class="node-name">Logging/Tracing</span></div>
+      <div class="node node--gateway"><span class="node-name">Discovery</span></div>
+      <div class="node node--gateway"><span class="node-name">Security</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>How it works — and where it meets the service mesh</h2>
+<p>Some concerns are best handled <em>in-process</em> by the chassis (config binding, domain-aware health, business
+metrics). Others — mTLS, retries, traffic routing, basic telemetry — can be pushed <em>out</em> of the process into a
+<a href="ref:service-mesh-sidecar">service mesh</a> sidecar, keeping them language-agnostic. The modern split:</p>
+<ul>
+  <li><strong>Chassis</strong> handles language-specific, application-level concerns (config, domain metrics, structured
+  logging, OTel instrumentation).</li>
+  <li><strong>Service mesh</strong> handles network-level concerns (mTLS, retries, circuit-breaking, traffic shifting) for
+  <em>all</em> languages, with no library upgrades.</li>
+</ul>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · A "new service in 10 minutes" template</span>
+<h3>Golden path scaffolding</h3>
+<p>A platform team publishes a service template (e.g. a Spring Boot Initializr profile or a Backstage template). Running
+it yields a service with health endpoints, Prometheus metrics, OTel tracing, config binding and OIDC auth already wired.
+The developer adds an endpoint and ships — every service in the org looks and operates the same way.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Spring Boot</strong> (+ Spring Cloud) — the archetypal JVM chassis (Actuator health/metrics, config, etc.).</li>
+  <li><strong>Micronaut</strong> &amp; <strong>Quarkus</strong> — fast-startup, low-memory, cloud-native JVM chassis (great
+  for serverless/containers).</li>
+  <li><strong>Go kit</strong> / <strong>Go-micro</strong> — chassis toolkits for Go.</li>
+  <li><strong>Dapr</strong> — a sidecar "distributed application runtime" providing service invocation, pub/sub, state and
+  secrets via standard APIs to <em>any</em> language — a chassis you don't link into your code.</li>
+  <li><strong>Backstage</strong> software templates standardise how new chassis-based services are created.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Lock-step upgrades</strong> — a shared chassis that forces every team to upgrade together recreates monolith
+coupling; version it and allow gradual adoption.</li>
+<li><strong>Business logic in the chassis</strong> — keep it to plumbing.</li>
+<li><strong>One chassis per language only</strong> — polyglot shops need a strategy (or lean on a mesh/Dapr) so non-JVM
+services aren't second-class.</li>
+<li><strong>Reinventing what the platform/mesh gives you</strong> — don't duplicate mTLS/retries already in the mesh.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A chassis provides <strong>cross-cutting plumbing</strong> so teams focus on the domain.</li>
+<li>It makes new services <strong>consistent and production-ready</strong> from the first commit.</li>
+<li>Split responsibilities with a <a href="ref:service-mesh-sidecar">service mesh</a>: app concerns in the chassis,
+network concerns in the mesh.</li>
+<li>Tools: <strong>Spring Boot, Micronaut, Quarkus, Go kit, Dapr</strong>; scaffold via templates/Backstage.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Your org runs services in Java, Go and Python. Why might a service mesh complement (or partly replace) a
+language-specific chassis here?</p>
+<details><summary>Show answer</summary>
+<p>A chassis is per-language, so each language needs its own implementation of mTLS, retries, circuit-breaking and basic
+telemetry — duplicated effort and drift. A <a href="ref:service-mesh-sidecar">service mesh</a> handles those
+network-level concerns in a sidecar <em>outside</em> the process, identically for all three languages and with no library
+upgrades. The chassis still adds value for in-process, app-level concerns (config binding, domain metrics), so they're
+complementary.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:observability">Observability</a> · <a href="ref:externalized-configuration">Externalized configuration</a> ·
+<a href="ref:service-mesh-sidecar">Service mesh &amp; sidecar</a> · <a href="ref:security-access-token">Access token</a></p>

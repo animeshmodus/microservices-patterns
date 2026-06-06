@@ -1,0 +1,139 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Backends for Frontends replaces one general-purpose
+  <a href="ref:api-gateway">API gateway</a> with a <em>dedicated gateway per client type</em> — a mobile BFF, a web BFF, a
+  partner BFF — each owned by that client's team and tailored to exactly what that client needs.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>Different clients (mobile, web, partner) have <strong>divergent needs</strong>.</li>
+      <li>A single gateway is <strong>bloating</strong> and teams are colliding in it.</li>
+      <li>Front-end teams want to <strong>own their API surface</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>Client needs are ~identical — one gateway is simpler.</li>
+      <li>You're tempted to put <strong>business logic</strong> in the BFF.</li>
+      <li>Proliferation outpaces shared tooling (auth, tracing).</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: one gateway can't please everyone</h2>
+<p>A single API gateway serving a battery-and-bandwidth-constrained mobile app, a rich web SPA, and third-party partners
+ends up full of conditionals and compromises. The mobile team waits on changes the web team owns; payloads are too fat for
+mobile and too thin for the desktop dashboard. The gateway becomes a contended bottleneck owned by no one.</p>
+
+<h2>The pattern: a backend per frontend</h2>
+<p>Give each client type its own gateway, owned by the team that builds that client. Each BFF aggregates and shapes data
+for <em>its</em> client only, so it can evolve fast without affecting the others.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — one BFF per client, each over the shared services</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--client"><span class="node-kind">Client</span><span class="node-name">Mobile app</span></div>
+      <div class="node node--client"><span class="node-kind">Client</span><span class="node-name">Web SPA</span></div>
+      <div class="node node--client"><span class="node-kind">Client</span><span class="node-name">Partner</span></div>
+    </div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--gateway"><span class="node-kind">BFF</span><span class="node-name">Mobile BFF</span></div>
+      <div class="node node--gateway"><span class="node-kind">BFF</span><span class="node-name">Web BFF</span></div>
+      <div class="node node--gateway"><span class="node-kind">BFF</span><span class="node-name">Partner BFF</span></div>
+    </div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-group" data-label="Shared internal services">
+      <div class="node node--service"><span class="node-name">Order</span></div>
+      <div class="node node--service"><span class="node-name">Catalog</span></div>
+      <div class="node node--service"><span class="node-name">Pricing</span></div>
+      <div class="node node--service"><span class="node-name">Account</span></div>
+    </div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--client">Client</span><span class="chip chip--gateway">BFF</span><span class="chip chip--service">Service</span></div>
+  </div>
+</figure>
+
+<h2>How it works</h2>
+<ul>
+  <li>Each BFF does the gateway jobs — routing, <a href="ref:api-composition">composition</a>, protocol translation,
+  edge concerns — but <em>only</em> for its client.</li>
+  <li>Ownership shifts to the front-end team: they ship client + BFF together, no cross-team coordination for a payload change.</li>
+  <li>A BFF has <strong>no database of its own</strong> — it composes downstream services. If it needs to store data, it's
+  a service, not a BFF.</li>
+  <li><strong>GraphQL</strong> is a popular realisation: each client queries exactly the fields it needs from a graph; at
+  scale, <em>Apollo Federation</em> lets domain teams own subgraphs while a router composes them.</li>
+</ul>
+
+<figure class="diagram">
+<figcaption>Same data, different shapes per client</figcaption>
+<pre class="mermaid">
+flowchart TD
+  S[Order + Catalog + Pricing services]
+  S --> M[Mobile BFF<br/>compact, image CDN urls]
+  S --> W[Web BFF<br/>rich, full objects]
+  M --> MA[Mobile app]
+  W --> WA[Web SPA]
+</pre>
+</figure>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce</span>
+<h3>Mobile vs headless web storefront</h3>
+<p>The <strong>web BFF</strong> (GraphQL/Apollo Federation) serves a Next.js storefront with rich product objects. The
+<strong>mobile BFF</strong> returns compressed, battery-friendly payloads with CDN image URLs instead of full objects.
+Both call the same product, pricing and cart services — but shape responses for their client.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · Banking</span>
+<h3>Retail app vs relationship-manager portal</h3>
+<p>The retail mobile BFF returns a simple summary (balance, last 3 transactions, card status). The RM portal BFF returns
+a full "customer 360" (all accounts, risk score, open service requests, portfolio) — same downstream services, very
+different aggregation and authorisation rules per BFF.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li>The pattern was named by <strong>Sam Newman</strong>; <strong>SoundCloud</strong> (Phil Calçado, 2015) and
+  <strong>Netflix</strong>'s device-specific API adapters are its origin stories.</li>
+  <li><strong>GraphQL</strong> via <strong>Apollo Federation</strong> and <strong>Netflix DGS</strong> is the modern BFF
+  toolkit; <strong>tRPC</strong> is popular for TypeScript mono-repos; <strong>GitHub</strong> and <strong>Shopify</strong>
+  expose GraphQL so each client fetches exactly its shape.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Logic dumping ground</strong> — front-end teams push pricing/eligibility rules into "their" BFF; now business
+logic is duplicated and inconsistent across BFFs.</li>
+<li><strong>Proliferation without shared libs</strong> — every BFF reinvents auth, logging, circuit-breaking differently.</li>
+<li><strong>GraphQL N+1</strong> — resolvers firing one downstream call per list item; use batching (DataLoader).</li>
+<li><strong>Pass-through proxy</strong> — a BFF that just forwards a service's model adds a hop and no value.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A BFF is a <strong>gateway per client type</strong>, owned by that client's team.</li>
+<li>It tailors shape/size to the client without compromising others — start with one gateway, split into BFFs when teams collide.</li>
+<li>BFFs <strong>compose</strong> services; they own <strong>no data</strong> and <strong>no business logic</strong>.</li>
+<li><strong>GraphQL federation</strong> is the modern way to build them at scale.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>What's the key difference between an API gateway and a BFF, and what problem does splitting into BFFs solve?</p>
+<details><summary>Show answer</summary>
+<p>An API gateway is one shared front door for <em>all</em> clients; a BFF is a gateway dedicated to <em>one</em> client
+type. Splitting solves ownership and tailoring: each front-end team owns and evolves its own BFF (and payload shapes)
+independently, eliminating the contention and one-size-fits-none compromises of a single shared gateway. The trade-off is
+more components and the discipline to share cross-cutting tooling.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:api-gateway">API gateway</a> · <a href="ref:api-composition">API composition</a> ·
+<a href="ref:security-access-token">Access token</a> · <a href="ref:rpi">Remote procedure invocation</a></p>

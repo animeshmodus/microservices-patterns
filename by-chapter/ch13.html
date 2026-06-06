@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Strangling the monolith and protecting new services with an anti-corruption layer.">
+  <title>Refactoring to Microservices · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html" class="active"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Chapters</div>
+    <nav class="nav">
+      <a href="ch01.html"><span class="nidx">01</span><span>Escaping Monolithic Hell</span></a>
+      <a href="ch02.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="ch03.html"><span class="nidx">03</span><span>Interprocess Communication</span></a>
+      <a href="ch04.html"><span class="nidx">04</span><span>Managing Transactions with Sagas</span></a>
+      <a href="ch05.html"><span class="nidx">05</span><span>Designing Business Logic</span></a>
+      <a href="ch06.html"><span class="nidx">06</span><span>Developing Business Logic with Event Sourcing</span></a>
+      <a href="ch07.html"><span class="nidx">07</span><span>Implementing Queries</span></a>
+      <a href="ch08.html"><span class="nidx">08</span><span>External API Patterns</span></a>
+      <a href="ch09.html"><span class="nidx">09</span><span>Testing Microservices (Parts 1 &amp; 2)</span></a>
+      <a href="ch11.html"><span class="nidx">11</span><span>Developing Production-Ready Services</span></a>
+      <a href="ch12.html"><span class="nidx">12</span><span>Deploying Microservices</span></a>
+      <a href="ch13.html" class="active"><span class="nidx">13</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Chapter</a><span class="sep">/</span>Refactoring to Microservices</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--ch">Chapter 13</span> <span class="badge">2 lessons</span> <span class="badge badge--diff">2 patterns</span></div>
+      <h1>Chapter 13 · Refactoring to Microservices</h1>
+      <p class="page-sub">Strangling the monolith and protecting new services with an anti-corruption layer.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-strangler-application"><h2 class="unit-title">Strangler Application</h2><div class="tags"><span class="badge badge--pat">Strangler application</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Migrate a monolith to microservices incrementally — put a
+  routing facade in front of it and, capability by capability, build new services and divert their traffic to them, so the
+  monolith gradually shrinks until it's "strangled", with no risky big-bang rewrite.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>You must modernise a <strong>large, running</strong> system you can't stop.</li>
+      <li>A <strong>big-bang rewrite</strong> is too risky/expensive.</li>
+      <li>You want to deliver value &amp; reduce risk <strong>continuously</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You extract services but keep a <strong>shared database</strong> (distributed monolith).</li>
+      <li>The migration <strong>never finishes</strong> — half-extracted zombies pile up.</li>
+      <li>You haven't planned <strong>data consistency</strong> during the transition.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: you can't stop the world to rewrite</h3>
+<p>The monolith still runs the business. A "stop everything and rewrite from scratch" project is the classic way to fail —
+it's high-risk, delivers no value for ages, and the requirements move under you. You need to evolve the system while it
+keeps serving customers.</p>
+
+<h3>The pattern: the strangler fig</h3>
+<p>Named by Martin Fowler after a vine that grows around a tree until it replaces it. Put a <strong>routing facade</strong>
+in front of the monolith. New functionality — and extracted capabilities — become services behind the facade; you route
+the relevant requests to them. Over time more routes point at services and fewer at the monolith, until the monolith can
+be retired.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — a facade routes each request to the monolith or a new service</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--client" style="align-self:center"><span class="node-kind">Clients</span><span class="node-name">Web / Mobile</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Routing facade</span><span class="node-name">Strangler Facade</span><span class="node-sub">gateway / proxy / ALB</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--ext"><span class="node-kind">Legacy</span><span class="node-name">Monolith</span><span class="node-sub">shrinking</span></div>
+      <div class="node node--service"><span class="node-kind">New</span><span class="node-name">Catalog Service</span></div>
+      <div class="node node--service"><span class="node-kind">New</span><span class="node-name">Delivery Service</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Flow — traffic shifts from monolith to services over time</figcaption>
+<pre class="mermaid">
+flowchart LR
+  C[Clients] --> F[Strangler Facade]
+  F -- "not yet migrated" --> M[Monolith]
+  F -- "/catalog/*" --> S1[Catalog Service]
+  F -- "/delivery/*" --> S2[Delivery Service]
+  classDef new fill:#064e3b,stroke:#34d399,color:#fff;
+  classDef old fill:#3f2937,stroke:#fb7185,color:#fff;
+  class S1,S2 new;
+  class M old;
+</pre>
+</figure>
+
+<h3>How it works — three complementary strategies</h3>
+<ol>
+  <li><strong>Implement new features as services</strong> — stop adding to the monolith; new capabilities go straight into
+  new services behind the facade.</li>
+  <li><strong>Separate the presentation tier from the backend</strong> — split the UI from business logic so each can
+  evolve independently.</li>
+  <li><strong>Extract business capabilities into services</strong> — peel off a <a href="../by-pattern/decompose-by-business-capability.html">capability</a>
+  at a time, including its data, and reroute.</li>
+</ol>
+<p>The hard part is the <strong>integration glue</strong> and <strong>data consistency</strong> during the overlap: the
+service and monolith often need each other's data. Techniques include replicating data via events/CDC, dual-writes
+(carefully), and protecting the new service from the legacy schema with an <a href="#sec-anti-corruption-layer">anti-corruption layer</a>.</p>
+
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Extract leaf, read-heavy capabilities first</div>
+<p>Start with low-coupling, read-heavy slices (e.g. product catalog) — lower risk, quick wins. Save tightly-coupled core
+domains for when the team has muscle memory. Run new and old in parallel (shadow/dark launch) before flipping traffic.</p>
+</div></div>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce</span>
+<h4>Catalog first, checkout last</h4>
+<p>The facade routes <code>/api/products/*</code> to a new Catalog Service (its own Postgres), seeded via CDC from the
+monolith. Checkout stays in the monolith for now. After a 3-month parallel run with monitoring, the monolith's catalog
+tables are retired. The pattern repeats capability by capability until the monolith is gone.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>Martin Fowler</strong> coined "Strangler Fig" (2004); it remains the dominant real-world migration strategy.</li>
+  <li><strong>Shopify, Airbnb, Uber</strong> all ran multi-year strangler programmes (often with a routing/proxy facade and
+  feature flags).</li>
+  <li>Facade tech: <a href="../by-pattern/api-gateway.html">API gateway</a>/Kong/NGINX, AWS ALB path routing, Envoy/Istio traffic
+  splitting; <strong>feature flags</strong> (LaunchDarkly/Unleash) to flip implementations at runtime.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Shared database left intact</strong> — extracting code but not data yields a <a href="../by-pattern/monolith-vs-microservices.html">distributed monolith</a>.</li>
+<li><strong>Never finishing</strong> — zombie half-migrated services accumulate; track and complete each extraction.</li>
+<li><strong>Dual-write bugs</strong> — writing to old and new stores during overlap; use events/CDC and idempotency.</li>
+<li><strong>God router</strong> — routing rules accumulating business logic in the facade.</li>
+<li><strong>No tests on the monolith</strong> before extraction — regressions slip through.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Migrate <strong>incrementally</strong> behind a <strong>routing facade</strong> — never big-bang.</li>
+<li>Three strategies: new features as services, split presentation/backend, extract capabilities.</li>
+<li>The overlap demands a <strong>data-consistency plan</strong> (events/CDC) and an <a href="#sec-anti-corruption-layer">anti-corruption layer</a>.</li>
+<li>Extract <strong>low-coupling, read-heavy</strong> capabilities first; define "done" so you actually finish.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A team extracts five services from the monolith but they all still read and write the monolith's single shared
+database. Have they escaped the monolith?</p>
+<details><summary>Show answer</summary>
+<p>No — they've built a <strong>distributed monolith</strong>. The shared database keeps everything coupled: schema changes
+ripple across all "services", they can't be deployed truly independently, and they now carry distributed-systems
+complexity with none of the autonomy benefit. A real strangler extraction moves the <em>data</em> too (each service owns
+its store), integrating via events/APIs — that's the harder, essential half of the job.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/monolith-vs-microservices.html">Monolith vs microservices</a> · <a href="#sec-anti-corruption-layer">Anti-corruption layer</a> ·
+<a href="../by-pattern/api-gateway.html">API gateway</a> · <a href="../by-pattern/decompose-by-business-capability.html">Decompose by business capability</a></p>
+</section>
+<section class="unit" id="sec-anti-corruption-layer"><h2 class="unit-title">Anti-Corruption Layer</h2><div class="tags"><span class="badge badge--pat">Anti-corruption layer</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> An anti-corruption layer (ACL) is a translation layer placed
+  at the boundary between a new, clean service and a legacy or external system — it converts between the two models so the
+  messy, foreign model can't leak in and corrupt your domain.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>A new service must integrate with a <strong>legacy</strong> system (e.g. during a <a href="#sec-strangler-application">strangler</a> migration).</li>
+      <li>You depend on an <strong>external/generic</strong> system with an awkward model.</li>
+      <li>You want to protect your <strong>ubiquitous language</strong> at a boundary.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>The ACL becomes a <strong>business-logic dumping ground</strong>.</li>
+      <li>You build a <strong>bidirectional</strong> ACL (often a sign the boundary is wrong).</li>
+      <li>It's a trivial field rename — a value object may suffice.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: the legacy model wants to infect the new one</h3>
+<p>When a clean new service talks directly to a legacy system, the legacy's data structures, naming and quirks tend to
+seep into the new code — its DTOs, then its domain objects — until the new service is just a reskin of the old mess. The
+same happens with external systems that have cryptic or ill-fitting models. You need a guard at the gate.</p>
+
+<h3>The pattern: translate at the boundary</h3>
+<p>From Eric Evans' Domain-Driven Design context-mapping: insert an <strong>anti-corruption layer</strong> — a set of
+adapters/translators — between the two bounded contexts. Inside your boundary you speak <em>your</em> clean model; the ACL
+translates to and from the foreign model. The foreign model never crosses the line.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — the ACL isolates the clean model from the legacy one</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="node node--service"><span class="node-kind">New service</span><span class="node-name">Clean domain model</span></div>
+    <div class="flow-arrow is-bi"><span>your language</span></div>
+    <div class="node node--gateway"><span class="node-kind">ACL</span><span class="node-name">Anti-Corruption Layer</span><span class="node-sub">adapter + translator</span></div>
+    <div class="flow-arrow is-bi"><span>their language</span></div>
+    <div class="node node--ext"><span class="node-kind">Legacy / external</span><span class="node-name">Mainframe · vendor API</span></div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Flow — translation keeps the foreign model out</figcaption>
+<pre class="mermaid">
+flowchart LR
+  N[New Service<br/>clean aggregates] -->|calls| A[Anti-Corruption Layer]
+  A -->|translate request| L[(Legacy / external system)]
+  L -->|legacy response| A
+  A -->|translate to clean model| N
+  classDef acl fill:#3a2a0c,stroke:#fbbf24,color:#fff;
+  class A acl;
+</pre>
+</figure>
+
+<h3>How it works</h3>
+<ul>
+  <li>Put the ACL in the <strong>downstream (consuming)</strong> service — it's <em>your</em> defence, not the legacy
+  system's job.</li>
+  <li>Translate <strong>both structure and semantics</strong> — field names, enumerations, units, null conventions, error
+  models — not just shapes.</li>
+  <li>Implement it as <strong>adapters/translators</strong> (Adapter + Facade); keep your domain model on the inside,
+  pristine.</li>
+  <li>Treat it as <strong>plumbing</strong>, version it, and <strong>test the mappings thoroughly</strong> — they're often
+  the most fragile, fiddly code in the system.</li>
+</ul>
+
+<h3>Worked use cases</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Healthcare</span>
+<h4>HL7 → a clean Appointment</h4>
+<p>A new scheduling service consumes <strong>HL7 v2</strong> messages from a legacy EHR. The ACL parses HL7 segments and
+maps them to a clean <code>Appointment</code> aggregate, so the scheduling domain never imports an HL7 library or knows
+the cryptic segment names — the legacy format stays outside the wall.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · Strangler migration</span>
+<h4>New service over a mainframe</h4>
+<p>During a <a href="#sec-strangler-application">strangler</a> migration, a new Spring service reads from a CDC-replicated
+copy of a mainframe table. An ACL maps the mainframe's <code>CUST_REC</code> fields to a clean <code>Customer</code>
+model, so when the mainframe is finally retired, only the ACL changes — the domain is untouched.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li>Defined by <strong>Eric Evans</strong> (DDD, 2003) as a context-mapping pattern; documented as a cloud pattern by
+  the <strong>Azure Architecture Center</strong>.</li>
+  <li>Common toolkits: <strong>MapStruct</strong> (Java), <strong>AutoMapper</strong> (.NET) for translation;
+  <strong>Apache Camel</strong> for integration; a Kafka consumer that converts legacy events to clean domain events is an
+  ACL too.</li>
+  <li>Heavily used in <strong>SAP S/4HANA</strong> migrations, banking mainframe modernisation, and any integration with a
+  generic/vendor subdomain (payments, GDS, identity).</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Logic creep</strong> — the ACL accumulates business rules; keep it to translation.</li>
+<li><strong>Bidirectional ACL</strong> — translating both ways is a smell that the context boundary is misplaced.</li>
+<li><strong>Letting types leak</strong> — skipping the ACL "just this once" gradually corrupts the clean model.</li>
+<li><strong>Stale mappings</strong> — the legacy schema changes and the ACL silently mistranslates; test &amp; monitor it.</li>
+<li><strong>Over-engineering</strong> — a heavy ACL framework for a couple of field renames.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>An ACL is a <strong>translation boundary</strong> that stops a legacy/external model corrupting your clean one.</li>
+<li>Place it in the <strong>consuming</strong> service; translate <strong>structure <em>and</em> semantics</strong>.</li>
+<li>Keep it <strong>plumbing</strong> (adapters/translators), well-tested and versioned — no business logic.</li>
+<li>Essential during <a href="#sec-strangler-application">strangler migrations</a> and when integrating <a href="../by-pattern/decompose-by-subdomain.html">generic subdomains</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why place the anti-corruption layer in the new service rather than modifying the legacy system to emit a clean model?</p>
+<details><summary>Show answer</summary>
+<p>The legacy/external system is often unchangeable, shared by other consumers, or simply not yours to modify — and even
+if you could, you'd be coupling its release to your needs. The ACL is <em>your</em> protective boundary: by owning the
+translation in the consuming service, you control your clean model, can adapt when the legacy schema shifts (changing only
+the ACL), and you don't impose your model on a system that other clients still depend on.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-strangler-application">Strangler application</a> · <a href="../by-pattern/decompose-by-subdomain.html">Decompose by subdomain</a> ·
+<a href="../by-pattern/business-logic.html">Domain model &amp; aggregate</a> · <a href="../by-pattern/monolith-vs-microservices.html">Microservice architecture</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="ch12.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Ch 12 · Deploying Microservices</span></a>
+      <span></span>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Move networking, security and observability into infrastructure with sidecar proxies and a mesh.">
+  <title>Service Mesh &amp; Sidecar · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html" class="active"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Service Mesh &amp; Sidecar</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Advanced">Advanced</span> <a class="badge" href="../by-category/deployment.html">Deployment</a> <a class="badge badge--ch" href="../by-chapter/ch12.html">Chapter 12</a></div>
+      <h1>Service Mesh &amp; Sidecar</h1>
+      <p class="page-sub">Move networking, security and observability into infrastructure with sidecar proxies and a mesh.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-service-mesh-sidecar"><div class="tags"><span class="badge badge--pat">Service mesh</span><span class="badge badge--pat">Sidecar</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A <em>sidecar</em> is a helper proxy deployed alongside each
+  service instance that intercepts its network traffic; a fleet of sidecars plus a control plane is a <em>service mesh</em>,
+  which moves cross-cutting network concerns — mTLS, retries, circuit-breaking, routing, telemetry — out of your code and
+  into the infrastructure, for every language at once.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You're <strong>polyglot</strong> and want uniform networking/security/observability.</li>
+      <li>You want <strong>zero-trust mTLS</strong> &amp; traffic control without app changes.</li>
+      <li>You run many services on <strong>Kubernetes</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You have a handful of services — the operational cost outweighs the gain.</li>
+      <li>The team can't operate the <strong>control plane</strong> (it's a critical component).</li>
+      <li>You'd use the mesh to paper over bad service design.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: the same network code, in every service, in every language</h2>
+<p>mTLS, retries, timeouts, <a href="circuit-breaker.html">circuit-breaking</a>, load-balancing, traffic shifting and
+request telemetry are needed by <em>every</em> service. Implementing them in a per-language <a href="microservice-chassis.html">chassis</a>
+means duplicated effort and drift across Java/Go/Python services. What if the platform handled them instead?</p>
+
+<h2>The pattern: a proxy sidecar + a control plane</h2>
+<p>Deploy a <strong>sidecar proxy</strong> (commonly Envoy) in the same pod as each service. All inbound/outbound traffic
+flows through it. A central <strong>control plane</strong> configures every sidecar with policy (security, routing,
+resilience). Together: a <strong>service mesh</strong>. Your application code just makes plain calls; the mesh does the
+rest transparently.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — data plane (sidecars) governed by a control plane</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Control plane</span><span class="node-name">istiod / Linkerd</span><span class="node-sub">policy · certs · config</span></div>
+    <div class="flow-arrow is-down"><span>configures sidecars</span></div>
+    <div class="arch-flow">
+      <div class="arch-group" data-label="Pod A">
+        <div class="node node--service"><span class="node-name">Service A</span></div>
+        <div class="node node--ext"><span class="node-kind">Sidecar</span><span class="node-name">Proxy</span></div>
+      </div>
+      <div class="flow-arrow is-bi"><span>mTLS</span></div>
+      <div class="arch-group" data-label="Pod B">
+        <div class="node node--ext"><span class="node-kind">Sidecar</span><span class="node-name">Proxy</span></div>
+        <div class="node node--service"><span class="node-name">Service B</span></div>
+      </div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>What the mesh gives you (without touching app code)</h2>
+<ul>
+  <li><strong>Security:</strong> automatic mutual TLS between services (zero-trust), identity, authorization policies.</li>
+  <li><strong>Resilience:</strong> retries, timeouts, circuit-breaking (outlier detection), load-balancing.</li>
+  <li><strong>Traffic management:</strong> canary &amp; blue-green, weighted routing, fault injection, mirroring.</li>
+  <li><strong>Observability:</strong> consistent golden metrics, traces and access logs for every call.</li>
+</ul>
+
+<div class="callout callout--story"><div class="ic">&#128640;</div><div class="body">
+<div class="ttl">2024+ : the sidecar-less shift (ambient mesh)</div>
+<p>Sidecars cost memory/CPU per pod (an Envoy each). In 2024 <strong>Istio Ambient Mesh</strong> reached GA, replacing
+per-pod sidecars with a per-node <em>ztunnel</em> (L4 mTLS) plus optional per-namespace <em>waypoint</em> proxies (L7) —
+cutting proxy overhead dramatically and removing pod restarts to join the mesh. <strong>Cilium</strong> pushes mesh
+features into the Linux kernel via <em>eBPF</em>, aiming for near-zero overhead. The mesh is getting cheaper.</p>
+</div></div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Zero-trust payments</span>
+<h3>Lock down who can call the ledger</h3>
+<p>An Istio <code>AuthorizationPolicy</code> ensures only <code>payment-processor</code> may call
+<code>ledger</code>, and strict mTLS encrypts all service-to-service traffic — enforced by sidecars, with no change to the
+services themselves. Security becomes a deployable policy, not scattered code.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Envoy</strong> (born at <strong>Lyft</strong>) is the de-facto data-plane proxy.</li>
+  <li><strong>Istio</strong> — the most featureful mesh (now with Ambient mode); <strong>Linkerd</strong> — lightweight,
+  Rust-based, simple (<strong>Monzo</strong> ran it across 1,500+ services); <strong>Consul Connect</strong>,
+  <strong>Cilium</strong> (eBPF), <strong>AWS App Mesh</strong>.</li>
+  <li><strong>Dapr</strong> overlaps as a sidecar runtime for app-level concerns (pub/sub, state, invocation).</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Sidecar overhead</strong> at scale — thousands of Envoys add real RAM/CPU (ambient/eBPF mitigate this).</li>
+<li><strong>Injection misconfig</strong> — a broken sidecar webhook silently drops traffic.</li>
+<li><strong>Control-plane as SPOF</strong> — run <code>istiod</code> HA; it's critical infrastructure.</li>
+<li><strong>Mesh-as-a-crutch</strong> — observability can mask poor API/service design rather than fix it.</li>
+<li><strong>Adopting too early</strong> — a few services don't justify a mesh's operational weight.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A <strong>sidecar</strong> proxy + <strong>control plane</strong> = a service mesh that handles networking concerns for you.</li>
+<li>Get <strong>mTLS, resilience, traffic control and telemetry</strong> uniformly, across all languages, with no app code.</li>
+<li>The 2024+ trend is <strong>sidecar-less / ambient</strong> (Istio Ambient, Cilium eBPF) to slash overhead.</li>
+<li>Complements the <a href="microservice-chassis.html">chassis</a>; offloads <a href="circuit-breaker.html">circuit breaking</a>, <a href="service-discovery.html">discovery</a>, <a href="security-access-token.html">mTLS</a> and <a href="observability.html">tracing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>How can a service mesh give you mutual TLS between all services without any team changing their application code?</p>
+<details><summary>Show answer</summary>
+<p>Because traffic is intercepted by the sidecar proxy, not the app. The control plane issues each workload a short-lived
+identity/certificate and configures the sidecars to establish mTLS on every connection transparently. The application
+still makes a plain call to "service-B"; the sidecars terminate/originate the encrypted, mutually-authenticated connection
+underneath — so encryption and identity are an infrastructure policy, not application logic.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="circuit-breaker.html">Circuit breaker</a> · <a href="service-discovery.html">Service discovery</a> ·
+<a href="observability.html">Observability</a> · <a href="security-access-token.html">Access token</a> ·
+<a href="deployment-patterns.html">Deployment</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="microservice-chassis.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Microservice Chassis</span></a>
+      <a class="next" href="deployment-patterns.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

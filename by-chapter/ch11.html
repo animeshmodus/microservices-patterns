@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Security with access tokens, externalised configuration, observability and the chassis.">
+  <title>Developing Production-Ready Services · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html" class="active"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">Chapters</div>
+    <nav class="nav">
+      <a href="ch01.html"><span class="nidx">01</span><span>Escaping Monolithic Hell</span></a>
+      <a href="ch02.html"><span class="nidx">02</span><span>Decomposition Strategies</span></a>
+      <a href="ch03.html"><span class="nidx">03</span><span>Interprocess Communication</span></a>
+      <a href="ch04.html"><span class="nidx">04</span><span>Managing Transactions with Sagas</span></a>
+      <a href="ch05.html"><span class="nidx">05</span><span>Designing Business Logic</span></a>
+      <a href="ch06.html"><span class="nidx">06</span><span>Developing Business Logic with Event Sourcing</span></a>
+      <a href="ch07.html"><span class="nidx">07</span><span>Implementing Queries</span></a>
+      <a href="ch08.html"><span class="nidx">08</span><span>External API Patterns</span></a>
+      <a href="ch09.html"><span class="nidx">09</span><span>Testing Microservices (Parts 1 &amp; 2)</span></a>
+      <a href="ch11.html" class="active"><span class="nidx">11</span><span>Developing Production-Ready Services</span></a>
+      <a href="ch12.html"><span class="nidx">12</span><span>Deploying Microservices</span></a>
+      <a href="ch13.html"><span class="nidx">13</span><span>Refactoring to Microservices</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Chapter</a><span class="sep">/</span>Developing Production-Ready Services</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--ch">Chapter 11</span> <span class="badge">4 lessons</span> <span class="badge badge--diff">9 patterns</span></div>
+      <h1>Chapter 11 · Developing Production-Ready Services</h1>
+      <p class="page-sub">Security with access tokens, externalised configuration, observability and the chassis.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-security-access-token"><h2 class="unit-title">Microservice Security &amp; Access Token</h2><div class="tags"><span class="badge badge--pat">Access token</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Authenticate the user once at the edge (the
+  <a href="../by-pattern/api-gateway.html">API gateway</a>), then pass a signed, self-contained <em>access token</em> (a JWT) to and
+  between services, so each service can verify identity and authorise the request without a shared session or calling back
+  to a login server.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>Requests flow through <strong>many services</strong> that all need identity.</li>
+      <li>You can't replicate server-side <strong>session state</strong> everywhere.</li>
+      <li>You want stateless, scalable <strong>authorisation</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>You validate that a token <em>exists</em> but not its <strong>issuer/audience/expiry/scope</strong>.</li>
+      <li>Tokens are <strong>long-lived</strong> (hard to revoke).</li>
+      <li>You forget service-to-service auth (<strong>mTLS</strong>).</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: security can't rely on a shared session</h3>
+<p>In a monolith, an in-memory session handled auth for the whole request. Across services there's no shared session, and
+making every service call a central auth server on every hop is slow and couples everyone to it. We need identity to
+travel <em>with</em> the request and be verifiable independently.</p>
+
+<h3>The pattern: authenticate at the edge, carry a token</h3>
+<p>The gateway authenticates the client (via <strong>OAuth 2.0 / OpenID Connect</strong>) and forwards a signed
+<strong>access token</strong> — typically a <strong>JWT</strong> containing identity and scopes — to downstream services.
+Each service verifies the token's signature and claims locally and authorises accordingly. No shared session, no callback.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — edge authentication + token propagation</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--client"><span class="node-kind">User</span><span class="node-name">Client</span></div>
+      <div class="flow-arrow is-bi"><span>login (OIDC)</span></div>
+      <div class="node node--ext"><span class="node-kind">Identity</span><span class="node-name">Auth Server</span><span class="node-sub">issues JWT</span></div>
+    </div>
+    <div class="flow-arrow is-down"><span>request + Bearer JWT</span></div>
+    <div class="arch-flow">
+      <div class="node node--gateway"><span class="node-kind">Edge</span><span class="node-name">API Gateway</span><span class="node-sub">validate JWT (JWKS)</span></div>
+      <div class="flow-arrow"><span>forward token / mTLS</span></div>
+      <div class="arch-group" data-label="Services verify JWT + authorise by scope">
+        <div class="node node--service"><span class="node-name">Order</span></div>
+        <div class="node node--service"><span class="node-name">Accounting</span></div>
+      </div>
+    </div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Sequence — login, token, propagation, verification</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as Client
+  participant A as Auth Server (OIDC)
+  participant G as API Gateway
+  participant S as Order Service
+  U->>A: authenticate (OAuth2 / OIDC)
+  A-->>U: access token (JWT, short-lived) + refresh token
+  U->>G: GET /orders (Authorization: Bearer JWT)
+  G->>G: verify signature via JWKS; check iss, aud, exp, scope
+  G->>S: forward request + token (mTLS)
+  S->>S: re-verify JWT; authorise by scope/role
+  S-->>U: 200 OK
+</pre>
+</figure>
+
+<h3>How it works — the modern stack</h3>
+<ul>
+  <li><strong>OAuth 2.0</strong> handles delegated authorisation; <strong>OpenID Connect (OIDC)</strong> adds the identity
+  layer (login/SSO) on top.</li>
+  <li><strong>JWT</strong> access tokens are self-contained (claims like <code>sub</code>, <code>scope</code>,
+  <code>exp</code>) and verified by checking the signature against the auth server's public keys (<strong>JWKS</strong>) —
+  no DB lookup.</li>
+  <li><strong>Short expiry</strong> (minutes) limits the blast radius of a leaked token; refresh tokens get new ones.</li>
+  <li><strong>Service-to-service:</strong> use <strong>mTLS</strong> for mutual machine identity (zero-trust), often with
+  <strong>SPIFFE/SPIRE</strong> issuing short-lived workload certificates — frequently handled by a
+  <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a>.</li>
+  <li><strong>Token exchange</strong> (RFC 8693) safely narrows/delegates a token as it moves deeper into the graph.</li>
+</ul>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · Scoped access on a money path</span>
+<h4>Only "payments:write" may charge a card</h4>
+<p>A user's JWT carries <code>scope: "orders:read orders:write"</code> but not <code>payments:write</code>. The gateway
+validates the token; Accounting Service, asked to charge a card, checks the scope and rejects — defence in depth, enforced
+locally by the service that owns the risk, without a central authorisation call.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li>Identity providers: <strong>Keycloak</strong> (OSS), <strong>Auth0</strong>, <strong>Okta</strong>, <strong>AWS
+  Cognito</strong>, <strong>Azure AD/Entra</strong>, <strong>IdentityServer</strong> (.NET).</li>
+  <li>The 2025 production norm: <em>gateway/BFF + OAuth2/OIDC + JWT + mTLS inside the mesh</em>, with SPIFFE/SPIRE for
+  workload identity in zero-trust designs.</li>
+  <li>The <strong>BFF pattern</strong> is increasingly used to keep tokens out of the browser (server-side session at the
+  BFF, tokens never exposed to JavaScript).</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Shallow validation</strong> — accepting any well-formed JWT without checking <code>iss</code>,
+<code>aud</code>, <code>exp</code> and <code>scope</code>. The #1 gateway security gap.</li>
+<li><strong>Long-lived tokens</strong> — hard to revoke; keep them short and use refresh tokens.</li>
+<li><strong>Trusting the network</strong> — no service-to-service auth; an intruder inside the perimeter roams freely. Use mTLS.</li>
+<li><strong>Secrets in code/images</strong> — keep keys/credentials in a secret store (see <a href="#sec-externalized-configuration">externalized configuration</a>).</li>
+<li><strong>Tokens in the browser</strong> exposed to XSS — prefer the BFF/server-side-session approach.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Authenticate <strong>once at the edge</strong>; carry a signed <strong>JWT access token</strong> through the graph.</li>
+<li>Use <strong>OAuth2/OIDC</strong>; verify <strong>signature + iss/aud/exp/scope</strong> at every service.</li>
+<li>Keep tokens <strong>short-lived</strong>; secure service-to-service calls with <strong>mTLS</strong> (SPIFFE/SPIRE).</li>
+<li>The <a href="../by-pattern/api-gateway.html">gateway</a>/<a href="../by-pattern/bff.html">BFF</a> is the natural place to authenticate; a <a href="../by-pattern/service-mesh-sidecar.html">mesh</a> can enforce mTLS for free.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is a self-contained JWT preferable to having each service call the auth server to validate a session on every
+request?</p>
+<details><summary>Show answer</summary>
+<p>A JWT is verified <em>locally</em> by checking its signature against the auth server's published public keys (JWKS) and
+inspecting its claims — no network call per hop. That keeps services decoupled from the auth server, removes it as a
+per-request bottleneck/SPOF, and scales statelessly. The trade-off (harder revocation) is managed with short expiry +
+refresh tokens.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="../by-pattern/api-gateway.html">API gateway</a> · <a href="../by-pattern/bff.html">Backends for Frontends</a> ·
+<a href="../by-pattern/service-mesh-sidecar.html">Service mesh &amp; sidecar</a> · <a href="#sec-externalized-configuration">Externalized configuration</a></p>
+</section>
+<section class="unit" id="sec-externalized-configuration"><h2 class="unit-title">Externalized Configuration</h2><div class="tags"><span class="badge badge--pat">Externalized configuration</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Don't bake environment-specific settings (database URLs,
+  credentials, feature flags) into the build — supply them to the service <em>at runtime</em>, either pushed in
+  (env vars / mounted files) or pulled from a configuration/secret server, so one immutable artifact runs unchanged in
+  every environment.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>The same build must run in <strong>dev / staging / prod</strong>.</li>
+      <li>You have <strong>secrets</strong> that must never live in source or images.</li>
+      <li>You want to change config without rebuilding/redeploying.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Anti-patterns to kill</h5>
+    <ul>
+      <li>Hard-coded endpoints/credentials in code or the image.</li>
+      <li>Per-environment branches/builds of the same service.</li>
+      <li>Secrets committed to Git.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: config differs per environment, builds shouldn't</h3>
+<p>A service connects to different databases, brokers and dependencies in dev, staging and prod, and needs secrets it must
+never expose. If those values are compiled into the artifact, you end up with environment-specific builds, leaked
+credentials, and "works on my machine" drift. The Twelve-Factor App rule: <em>strictly separate config from code</em>.</p>
+
+<h3>The pattern: inject configuration at runtime</h3>
+<p>Build one immutable artifact; provide its configuration externally when it runs. There are two delivery styles:</p>
+<figure class="arch">
+  <figcaption>Architecture — push vs pull configuration</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="arch-group" data-label="Push model">
+      <div class="node node--ext"><span class="node-kind">Platform</span><span class="node-name">Env vars / mounted files</span></div>
+      <div class="flow-arrow"><span>at startup</span></div>
+      <div class="node node--service"><span class="node-name">Service</span></div>
+    </div>
+    <div class="flow-arrow is-bi"><span>or</span></div>
+    <div class="arch-group" data-label="Pull model">
+      <div class="node node--service"><span class="node-name">Service</span></div>
+      <div class="flow-arrow"><span>fetch on boot/refresh</span></div>
+      <div class="node node--gateway"><span class="node-kind">Config / secret server</span><span class="node-name">Config Server · Vault</span></div>
+    </div>
+  </div></div>
+</figure>
+<ul>
+  <li><strong>Push</strong> — the deployment platform injects config via <strong>environment variables</strong> or mounted
+  files when the service starts (e.g. Kubernetes ConfigMaps/Secrets). Simple, no extra runtime dependency.</li>
+  <li><strong>Pull</strong> — the service fetches config from a <strong>config server</strong> or
+  <strong>secret store</strong> on startup (and can refresh). Centralised, supports dynamic updates and rich secret
+  management.</li>
+</ul>
+
+<h3>How it works — and secrets get special treatment</h3>
+<ul>
+  <li><strong>Layered config:</strong> sensible defaults in the artifact, overridden by environment-specific values.</li>
+  <li><strong>Secrets ≠ config:</strong> credentials/keys belong in a <em>secret manager</em> (encrypted at rest, access-controlled, audited, ideally dynamically issued and short-lived) — not in plain ConfigMaps or Git.</li>
+  <li><strong>Refresh:</strong> pull-based setups can hot-reload some values (e.g. feature flags) without a restart.</li>
+  <li>This is a core responsibility of the <a href="#sec-microservice-chassis">microservice chassis</a>.</li>
+</ul>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · One image, three environments</span>
+<h4>Promote the exact artifact you tested</h4>
+<p>The Order Service container built in CI is promoted unchanged from staging to prod. Kubernetes injects the right
+<code>DB_URL</code> via a ConfigMap and the DB password via a Secret sourced from Vault; the prod database credential is a
+short-lived, dynamically-issued Vault lease. Nothing environment-specific is ever rebuilt — what you tested is what ships.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>Kubernetes ConfigMaps &amp; Secrets</strong> — the default push mechanism for containerised services.</li>
+  <li><strong>HashiCorp Vault</strong> — secrets management with dynamic, short-lived credentials and encryption-as-a-service.</li>
+  <li><strong>Spring Cloud Config</strong> / <strong>Consul KV</strong> — centralised pull-based config servers.</li>
+  <li><strong>AWS Parameter Store / Secrets Manager</strong>, <strong>Azure Key Vault</strong>, <strong>GCP Secret
+  Manager</strong> — managed cloud equivalents.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Secrets in images/Git</strong> — the classic breach vector; use a secret manager.</li>
+<li><strong>Plaintext Kubernetes Secrets</strong> — base64 is not encryption; enable encryption-at-rest / external secret stores.</li>
+<li><strong>Config drift</strong> — hand-edited prod config diverging from source of truth; manage config as code.</li>
+<li><strong>Restart-only changes</strong> — no way to flip a flag without redeploy; add refresh where it matters.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li><strong>Separate config from code</strong> — one immutable artifact, runtime-injected settings.</li>
+<li><strong>Push</strong> (env vars / ConfigMaps) is simplest; <strong>pull</strong> (config server) centralises &amp; enables refresh.</li>
+<li>Treat <strong>secrets</strong> specially — a real secret manager (Vault, cloud KMS), never Git or plain images.</li>
+<li>It's a standard duty of the <a href="#sec-microservice-chassis">microservice chassis</a> and ties into <a href="#sec-security-access-token">security</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is promoting the <em>same</em> container image through environments (with externalised config) safer than building
+a separate image per environment?</p>
+<details><summary>Show answer</summary>
+<p>Because the artifact you tested in staging is byte-for-byte what runs in prod — only the injected configuration differs.
+Per-environment builds reintroduce the risk that prod runs subtly different code/dependencies than what you validated,
+and they couple config changes to rebuilds. Externalised config gives you "build once, run anywhere," with environment
+differences confined to data, not code.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-microservice-chassis">Microservice chassis</a> · <a href="../by-pattern/deployment-patterns.html">Deployment</a> ·
+<a href="#sec-security-access-token">Access token</a> · <a href="#sec-observability">Observability</a></p>
+</section>
+<section class="unit" id="sec-observability"><h2 class="unit-title">Observability</h2><div class="tags"><span class="badge badge--pat">Health check API</span><span class="badge badge--pat">Log aggregation</span><span class="badge badge--pat">Distributed tracing</span><span class="badge badge--pat">Application metrics</span><span class="badge badge--pat">Exception tracking</span><span class="badge badge--pat">Audit logging</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A distributed system is opaque by default, so make each
+  service <em>observable</em> through six complementary patterns — health checks, aggregated logs, distributed tracing,
+  metrics, exception tracking and audit logging — so you can answer "is it healthy, what's it doing, and why did this
+  request fail?" across dozens of services.</div>
+  <div class="g-when">
+    <h5>Always — but especially when</h5>
+    <ul>
+      <li>A single request <strong>crosses many services</strong>.</li>
+      <li>You need to find <strong>which</strong> service in a chain failed or slowed.</li>
+      <li>You're running in production (and before you migrate off a monolith).</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Don't</h5>
+    <ul>
+      <li>Bolt observability on <em>after</em> decomposing — add it first.</li>
+      <li>Log without a <strong>correlation/trace id</strong> — logs become un-joinable.</li>
+      <li>Drown in dashboards no one watches; alert on symptoms users feel.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: where did the request go, and why is it slow?</h3>
+<p>When "place order" touches gateway → order → kitchen → accounting, a failure or latency spike could be anywhere. You
+can't SSH into one process and read a stack trace like you would with a monolith. You need the system to <em>emit</em> the
+signals that let you reconstruct what happened.</p>
+
+<h3>The pattern: six ways to see inside</h3>
+<p>Often summarised as the <strong>three pillars</strong> — metrics, logs, traces — plus three operational must-haves:</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Sub-pattern</th><th>Answers</th><th>Typical tech</th></tr></thead>
+<tbody>
+<tr><td><strong>Health check API</strong></td><td>Is this instance alive &amp; ready for traffic?</td><td>liveness/readiness endpoints; K8s probes</td></tr>
+<tr><td><strong>Log aggregation</strong></td><td>What happened? (searchable, centralised)</td><td>ELK / Grafana Loki</td></tr>
+<tr><td><strong>Distributed tracing</strong></td><td>What path did <em>this request</em> take, where was the time?</td><td>OpenTelemetry + Jaeger / Tempo / Zipkin</td></tr>
+<tr><td><strong>Application metrics</strong></td><td>How much, how fast, how many errors? (trends)</td><td>Prometheus + Grafana</td></tr>
+<tr><td><strong>Exception tracking</strong></td><td>What's crashing, deduped &amp; alerted?</td><td>Sentry</td></tr>
+<tr><td><strong>Audit logging</strong></td><td>Who did what, when? (compliance)</td><td>append-only audit store</td></tr>
+</tbody>
+</table></div>
+
+<figure class="arch">
+  <figcaption>Architecture — services emit signals to a collector, then to backends &amp; dashboards</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-name">Order</span></div>
+      <div class="node node--service"><span class="node-name">Kitchen</span></div>
+      <div class="node node--service"><span class="node-name">Delivery</span></div>
+    </div>
+    <div class="flow-arrow is-down"><span>OpenTelemetry (metrics·logs·traces)</span></div>
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Pipeline</span><span class="node-name">OTel Collector</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--db"><span class="node-kind">Metrics</span><span class="node-name">Prometheus</span></div>
+      <div class="node node--db"><span class="node-kind">Logs</span><span class="node-name">Loki / ELK</span></div>
+      <div class="node node--db"><span class="node-kind">Traces</span><span class="node-name">Jaeger / Tempo</span></div>
+    </div>
+    <div class="flow-arrow is-down"></div>
+    <div class="node node--client" style="align-self:center"><span class="node-kind">Visualise &amp; alert</span><span class="node-name">Grafana</span></div>
+  </div></div>
+</figure>
+
+<h3>How distributed tracing works</h3>
+<p>A trace follows one request across services. The gateway generates a <strong>traceId</strong>; each hop adds a
+<strong>span</strong> and propagates the id via headers (W3C Trace-Context). Stitched together, the spans show exactly
+where the time went and which service errored.</p>
+<figure class="diagram">
+<figcaption>One traceId, many spans, propagated across services</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant G as Gateway
+  participant O as Order
+  participant K as Kitchen
+  participant D as DB
+  Note over G,D: traceId=abc123 propagated in headers
+  G->>O: POST /orders [span 1]
+  O->>K: createTicket [span 2]
+  K->>D: INSERT ticket [span 3]
+  D-->>K: ok
+  K-->>O: ticket
+  O-->>G: order
+  Note over G,D: spans assembled into one timeline in Jaeger
+</pre>
+</figure>
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Correlate everything with one id</div>
+<p>Put the <code>traceId</code> into every log line. Now a single trace in Jaeger links straight to the exact logs from
+every service for that request — the difference between a 5-minute and a 5-hour incident.</p>
+</div></div>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · The "checkout is slow" page</span>
+<h4>Find the offending hop</h4>
+<p>A metrics dashboard shows checkout p99 latency spiking. You open a slow trace: the span breakdown reveals Pricing
+Service taking 1.8s on a DB call. The trace's logs (same <code>traceId</code>) show a missing index after a deploy. Three
+pillars, one diagnosis — without guessing.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>OpenTelemetry (OTel)</strong> — the CNCF vendor-neutral standard for emitting metrics/logs/traces; in
+  2025/26 it's the <em>baseline</em>, not optional. The <strong>OTel Collector</strong> receives, processes and routes
+  telemetry to any backend.</li>
+  <li><strong>Prometheus + Grafana</strong> (metrics/dashboards), <strong>Jaeger / Grafana Tempo / Zipkin</strong> (traces),
+  <strong>ELK / Grafana Loki</strong> (logs), <strong>Sentry</strong> (exceptions), <strong>Datadog</strong> (all-in-one SaaS).</li>
+  <li>Health checks integrate with <strong>Kubernetes</strong> liveness/readiness probes; a <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a>
+  can emit golden metrics &amp; traces with no app code.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>No correlation id</strong> — un-joinable logs; you can't follow a request.</li>
+<li><strong>Liveness probe that calls dependencies</strong> — a slow dependency triggers needless restarts; keep liveness
+local, put dependency checks in readiness.</li>
+<li><strong>Metric/label explosion</strong> — high-cardinality labels blow up Prometheus.</li>
+<li><strong>Alert fatigue</strong> — alert on user-visible symptoms (SLOs), not every twitch.</li>
+<li><strong>Logging secrets/PII</strong> — a compliance incident waiting to happen.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>Make services observable via six patterns: <strong>health, logs, traces, metrics, exceptions, audit</strong>.</li>
+<li><strong>Distributed tracing</strong> + a shared <strong>correlation id</strong> are what make a request followable.</li>
+<li>Standardise on <strong>OpenTelemetry</strong>; route to Prometheus/Grafana/Jaeger/Loki.</li>
+<li>Add observability <em>before</em> decomposing; a <a href="../by-pattern/service-mesh-sidecar.html">mesh</a> and the <a href="#sec-microservice-chassis">chassis</a> give a lot of it for free.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A request fails intermittently somewhere in a 5-service chain. Which observability pattern pinpoints <em>where</em>,
+and what makes it work?</p>
+<details><summary>Show answer</summary>
+<p><strong>Distributed tracing.</strong> A single <code>traceId</code> is generated at the edge and propagated (via
+headers) to every downstream service, each adding a span. The assembled trace shows the full path and timing, so you can
+see exactly which hop errored or slowed — something logs/metrics alone can't localise. Putting that traceId in logs lets
+you jump straight to the relevant log lines.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-microservice-chassis">Microservice chassis</a> · <a href="../by-pattern/service-mesh-sidecar.html">Service mesh &amp; sidecar</a> ·
+<a href="../by-pattern/api-gateway.html">API gateway</a> · <a href="../by-pattern/circuit-breaker.html">Circuit breaker</a></p>
+</section>
+<section class="unit" id="sec-microservice-chassis"><h2 class="unit-title">Microservice Chassis</h2><div class="tags"><span class="badge badge--pat">Microservice chassis</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A microservice chassis is a framework (or set of libraries)
+  that handles the cross-cutting concerns every service needs — configuration, health checks, metrics, logging, tracing,
+  security, service discovery — so a new service starts production-ready and developers write business logic, not plumbing.</div>
+  <div class="g-when">
+    <h5>Use when</h5>
+    <ul>
+      <li>You're creating <strong>many services</strong> and don't want to re-solve the basics each time.</li>
+      <li>You want <strong>consistency</strong> in how services do config/health/metrics.</li>
+      <li>New services should be <strong>production-ready on day one</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h5>Be careful when</h5>
+    <ul>
+      <li>The chassis becomes a <strong>shared-library monolith</strong> everyone must upgrade in lockstep.</li>
+      <li>It encodes business logic (it should only do plumbing).</li>
+      <li>It conflicts with what a <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a> already provides.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>The problem: every service re-implements the same plumbing</h3>
+<p>Before a service can do anything useful it needs <a href="#sec-externalized-configuration">externalised
+configuration</a>, <a href="#sec-observability">health checks, metrics, logging and tracing</a>,
+<a href="../by-pattern/service-discovery.html">service discovery</a> and <a href="#sec-security-access-token">security</a>. Re-writing
+that for each of 40 services is wasteful and produces 40 subtly different implementations. The first service might take
+weeks just on plumbing.</p>
+
+<h3>The pattern: stand on a chassis</h3>
+<p>Like a car chassis carries the engine, wheels and electrics so designers focus on the body, a microservice chassis
+provides the cross-cutting machinery so developers focus on the domain. New services are scaffolded from a template that
+already wires it in.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — business logic on top, chassis underneath</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--service" style="align-self:center;max-width:420px"><span class="node-kind">You write this</span><span class="node-name">Business logic (domain, APIs)</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-group" data-label="Microservice chassis (provided)">
+      <div class="node node--gateway"><span class="node-name">Config</span></div>
+      <div class="node node--gateway"><span class="node-name">Health</span></div>
+      <div class="node node--gateway"><span class="node-name">Metrics</span></div>
+      <div class="node node--gateway"><span class="node-name">Logging/Tracing</span></div>
+      <div class="node node--gateway"><span class="node-name">Discovery</span></div>
+      <div class="node node--gateway"><span class="node-name">Security</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h3>How it works — and where it meets the service mesh</h3>
+<p>Some concerns are best handled <em>in-process</em> by the chassis (config binding, domain-aware health, business
+metrics). Others — mTLS, retries, traffic routing, basic telemetry — can be pushed <em>out</em> of the process into a
+<a href="../by-pattern/service-mesh-sidecar.html">service mesh</a> sidecar, keeping them language-agnostic. The modern split:</p>
+<ul>
+  <li><strong>Chassis</strong> handles language-specific, application-level concerns (config, domain metrics, structured
+  logging, OTel instrumentation).</li>
+  <li><strong>Service mesh</strong> handles network-level concerns (mTLS, retries, circuit-breaking, traffic shifting) for
+  <em>all</em> languages, with no library upgrades.</li>
+</ul>
+
+<h3>Worked use case</h3>
+<div class="usecase">
+<span class="uc-tag">Use case · A "new service in 10 minutes" template</span>
+<h4>Golden path scaffolding</h4>
+<p>A platform team publishes a service template (e.g. a Spring Boot Initializr profile or a Backstage template). Running
+it yields a service with health endpoints, Prometheus metrics, OTel tracing, config binding and OIDC auth already wired.
+The developer adds an endpoint and ships — every service in the org looks and operates the same way.</p>
+</div>
+
+<h3>In the wild</h3>
+<ul>
+  <li><strong>Spring Boot</strong> (+ Spring Cloud) — the archetypal JVM chassis (Actuator health/metrics, config, etc.).</li>
+  <li><strong>Micronaut</strong> &amp; <strong>Quarkus</strong> — fast-startup, low-memory, cloud-native JVM chassis (great
+  for serverless/containers).</li>
+  <li><strong>Go kit</strong> / <strong>Go-micro</strong> — chassis toolkits for Go.</li>
+  <li><strong>Dapr</strong> — a sidecar "distributed application runtime" providing service invocation, pub/sub, state and
+  secrets via standard APIs to <em>any</em> language — a chassis you don't link into your code.</li>
+  <li><strong>Backstage</strong> software templates standardise how new chassis-based services are created.</li>
+</ul>
+
+<h3>Pitfalls &amp; anti-patterns</h3>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Lock-step upgrades</strong> — a shared chassis that forces every team to upgrade together recreates monolith
+coupling; version it and allow gradual adoption.</li>
+<li><strong>Business logic in the chassis</strong> — keep it to plumbing.</li>
+<li><strong>One chassis per language only</strong> — polyglot shops need a strategy (or lean on a mesh/Dapr) so non-JVM
+services aren't second-class.</li>
+<li><strong>Reinventing what the platform/mesh gives you</strong> — don't duplicate mTLS/retries already in the mesh.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h4>Key takeaways</h4>
+<ul>
+<li>A chassis provides <strong>cross-cutting plumbing</strong> so teams focus on the domain.</li>
+<li>It makes new services <strong>consistent and production-ready</strong> from the first commit.</li>
+<li>Split responsibilities with a <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a>: app concerns in the chassis,
+network concerns in the mesh.</li>
+<li>Tools: <strong>Spring Boot, Micronaut, Quarkus, Go kit, Dapr</strong>; scaffold via templates/Backstage.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Your org runs services in Java, Go and Python. Why might a service mesh complement (or partly replace) a
+language-specific chassis here?</p>
+<details><summary>Show answer</summary>
+<p>A chassis is per-language, so each language needs its own implementation of mTLS, retries, circuit-breaking and basic
+telemetry — duplicated effort and drift. A <a href="../by-pattern/service-mesh-sidecar.html">service mesh</a> handles those
+network-level concerns in a sidecar <em>outside</em> the process, identically for all three languages and with no library
+upgrades. The chassis still adds value for in-process, app-level concerns (config binding, domain metrics), so they're
+complementary.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="#sec-observability">Observability</a> · <a href="#sec-externalized-configuration">Externalized configuration</a> ·
+<a href="../by-pattern/service-mesh-sidecar.html">Service mesh &amp; sidecar</a> · <a href="#sec-security-access-token">Access token</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="ch09.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Ch 9 · Testing Microservices (Parts 1 &amp; 2)</span></a>
+      <a class="next" href="ch12.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Ch 12 · Deploying Microservices</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

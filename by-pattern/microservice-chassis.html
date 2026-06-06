@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A framework that handles cross-cutting concerns so each new service starts production-ready.">
+  <title>Microservice Chassis · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html" class="active"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Microservice Chassis</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Intro">Intro</span> <a class="badge" href="../by-category/cross-cutting.html">Cross-Cutting Concerns</a> <a class="badge badge--ch" href="../by-chapter/ch11.html">Chapter 11</a></div>
+      <h1>Microservice Chassis</h1>
+      <p class="page-sub">A framework that handles cross-cutting concerns so each new service starts production-ready.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-microservice-chassis"><div class="tags"><span class="badge badge--pat">Microservice chassis</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A microservice chassis is a framework (or set of libraries)
+  that handles the cross-cutting concerns every service needs — configuration, health checks, metrics, logging, tracing,
+  security, service discovery — so a new service starts production-ready and developers write business logic, not plumbing.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You're creating <strong>many services</strong> and don't want to re-solve the basics each time.</li>
+      <li>You want <strong>consistency</strong> in how services do config/health/metrics.</li>
+      <li>New services should be <strong>production-ready on day one</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>The chassis becomes a <strong>shared-library monolith</strong> everyone must upgrade in lockstep.</li>
+      <li>It encodes business logic (it should only do plumbing).</li>
+      <li>It conflicts with what a <a href="service-mesh-sidecar.html">service mesh</a> already provides.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: every service re-implements the same plumbing</h2>
+<p>Before a service can do anything useful it needs <a href="externalized-configuration.html">externalised
+configuration</a>, <a href="observability.html">health checks, metrics, logging and tracing</a>,
+<a href="service-discovery.html">service discovery</a> and <a href="security-access-token.html">security</a>. Re-writing
+that for each of 40 services is wasteful and produces 40 subtly different implementations. The first service might take
+weeks just on plumbing.</p>
+
+<h2>The pattern: stand on a chassis</h2>
+<p>Like a car chassis carries the engine, wheels and electrics so designers focus on the body, a microservice chassis
+provides the cross-cutting machinery so developers focus on the domain. New services are scaffolded from a template that
+already wires it in.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — business logic on top, chassis underneath</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--service" style="align-self:center;max-width:420px"><span class="node-kind">You write this</span><span class="node-name">Business logic (domain, APIs)</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-group" data-label="Microservice chassis (provided)">
+      <div class="node node--gateway"><span class="node-name">Config</span></div>
+      <div class="node node--gateway"><span class="node-name">Health</span></div>
+      <div class="node node--gateway"><span class="node-name">Metrics</span></div>
+      <div class="node node--gateway"><span class="node-name">Logging/Tracing</span></div>
+      <div class="node node--gateway"><span class="node-name">Discovery</span></div>
+      <div class="node node--gateway"><span class="node-name">Security</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>How it works — and where it meets the service mesh</h2>
+<p>Some concerns are best handled <em>in-process</em> by the chassis (config binding, domain-aware health, business
+metrics). Others — mTLS, retries, traffic routing, basic telemetry — can be pushed <em>out</em> of the process into a
+<a href="service-mesh-sidecar.html">service mesh</a> sidecar, keeping them language-agnostic. The modern split:</p>
+<ul>
+  <li><strong>Chassis</strong> handles language-specific, application-level concerns (config, domain metrics, structured
+  logging, OTel instrumentation).</li>
+  <li><strong>Service mesh</strong> handles network-level concerns (mTLS, retries, circuit-breaking, traffic shifting) for
+  <em>all</em> languages, with no library upgrades.</li>
+</ul>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · A "new service in 10 minutes" template</span>
+<h3>Golden path scaffolding</h3>
+<p>A platform team publishes a service template (e.g. a Spring Boot Initializr profile or a Backstage template). Running
+it yields a service with health endpoints, Prometheus metrics, OTel tracing, config binding and OIDC auth already wired.
+The developer adds an endpoint and ships — every service in the org looks and operates the same way.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Spring Boot</strong> (+ Spring Cloud) — the archetypal JVM chassis (Actuator health/metrics, config, etc.).</li>
+  <li><strong>Micronaut</strong> &amp; <strong>Quarkus</strong> — fast-startup, low-memory, cloud-native JVM chassis (great
+  for serverless/containers).</li>
+  <li><strong>Go kit</strong> / <strong>Go-micro</strong> — chassis toolkits for Go.</li>
+  <li><strong>Dapr</strong> — a sidecar "distributed application runtime" providing service invocation, pub/sub, state and
+  secrets via standard APIs to <em>any</em> language — a chassis you don't link into your code.</li>
+  <li><strong>Backstage</strong> software templates standardise how new chassis-based services are created.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Lock-step upgrades</strong> — a shared chassis that forces every team to upgrade together recreates monolith
+coupling; version it and allow gradual adoption.</li>
+<li><strong>Business logic in the chassis</strong> — keep it to plumbing.</li>
+<li><strong>One chassis per language only</strong> — polyglot shops need a strategy (or lean on a mesh/Dapr) so non-JVM
+services aren't second-class.</li>
+<li><strong>Reinventing what the platform/mesh gives you</strong> — don't duplicate mTLS/retries already in the mesh.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A chassis provides <strong>cross-cutting plumbing</strong> so teams focus on the domain.</li>
+<li>It makes new services <strong>consistent and production-ready</strong> from the first commit.</li>
+<li>Split responsibilities with a <a href="service-mesh-sidecar.html">service mesh</a>: app concerns in the chassis,
+network concerns in the mesh.</li>
+<li>Tools: <strong>Spring Boot, Micronaut, Quarkus, Go kit, Dapr</strong>; scaffold via templates/Backstage.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Your org runs services in Java, Go and Python. Why might a service mesh complement (or partly replace) a
+language-specific chassis here?</p>
+<details><summary>Show answer</summary>
+<p>A chassis is per-language, so each language needs its own implementation of mTLS, retries, circuit-breaking and basic
+telemetry — duplicated effort and drift. A <a href="service-mesh-sidecar.html">service mesh</a> handles those
+network-level concerns in a sidecar <em>outside</em> the process, identically for all three languages and with no library
+upgrades. The chassis still adds value for in-process, app-level concerns (config binding, domain metrics), so they're
+complementary.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="observability.html">Observability</a> · <a href="externalized-configuration.html">Externalized configuration</a> ·
+<a href="service-mesh-sidecar.html">Service mesh &amp; sidecar</a> · <a href="security-access-token.html">Access token</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="observability.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Observability</span></a>
+      <a class="next" href="service-mesh-sidecar.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Service Mesh &amp; Sidecar</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

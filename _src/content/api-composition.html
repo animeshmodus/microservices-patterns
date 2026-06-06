@@ -1,0 +1,149 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> To answer a query whose data lives in several services, an
+  <em>API composer</em> calls each owning service and joins the results in memory — the simplest way to do a "cross-service
+  query" when you can't run a database join across separate databases.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>A query needs data from <strong>2–4 services</strong>.</li>
+      <li>The in-memory join is <strong>small and cheap</strong>.</li>
+      <li>You want the simplest option before reaching for <a href="ref:cqrs">CQRS</a>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Avoid when</h4>
+    <ul>
+      <li>The join is <strong>large</strong> (big in-memory datasets) or N+1.</li>
+      <li>You need rich filtering/sorting across services → use <a href="ref:cqrs">CQRS</a>.</li>
+      <li>Too many dependencies make the query fragile/slow.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: there are no joins across services</h2>
+<p>In a monolith, "show order 123 with its restaurant, delivery status and bill" is a single SQL join. Once Order,
+Kitchen, Delivery and Accounting each own a private database, that join is impossible. The data still needs assembling —
+so <em>something</em> must gather the pieces.</p>
+
+<h2>The pattern: a composer fans out and joins</h2>
+<p>An <strong>API composer</strong> implements the query by invoking each provider service and combining the responses.
+The composer can be a dedicated service, or (very commonly) the <a href="ref:api-gateway">API gateway</a> itself.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — the API composer joins data from four services</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Composer</span><span class="node-name">findOrder() composer</span></div>
+    <div class="flow-arrow is-down"><span>invoke in parallel</span></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-name">Order</span></div>
+      <div class="node node--service"><span class="node-name">Kitchen</span></div>
+      <div class="node node--service"><span class="node-name">Delivery</span></div>
+      <div class="node node--service"><span class="node-name">Accounting</span></div>
+    </div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--gateway">Composer</span><span class="chip chip--service">Provider service</span></div>
+  </div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Sequence — fan out in parallel, then merge</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cl as Client
+  participant X as API Composer
+  participant O as Order Svc
+  participant K as Kitchen Svc
+  participant D as Delivery Svc
+  Cl->>X: GET /orders/123
+  par parallel fan-out
+    X->>O: getOrder(123)
+    X->>K: getTicket(123)
+    X->>D: getDelivery(123)
+  end
+  O-->>X: order
+  K-->>X: ticket
+  D-->>X: delivery
+  X->>X: join in memory
+  X-->>Cl: combined view
+</pre>
+</figure>
+
+<h2>How it works — design choices</h2>
+<ul>
+  <li><strong>Call in parallel</strong> wherever the calls are independent (reactive/async), so latency is the slowest
+  single call, not the sum.</li>
+  <li><strong>Handle partial failure</strong> — return partial data (e.g. <code>delivery: null</code>) rather than failing
+  the whole response; wrap calls in <a href="ref:circuit-breaker">circuit breakers</a>.</li>
+  <li><strong>Keep the composer stateless</strong> — never persist intermediate results (that would make it a hidden
+  shared database).</li>
+  <li><strong>Mind availability</strong> — the composer depends on all providers, so its availability is the product of
+  theirs. Cache reference data and degrade gracefully.</li>
+</ul>
+
+<h2>Trade-offs</h2>
+<div class="tradeoffs">
+  <div class="pros"><h4>Benefits</h4><ul>
+    <li>Simplest way to query across services.</li>
+    <li>No extra datastore to maintain (unlike CQRS).</li>
+    <li>Always reads fresh data from the source.</li>
+  </ul></div>
+  <div class="cons"><h4>Drawbacks</h4><ul>
+    <li>In-memory joins are costly for large datasets.</li>
+    <li>Reduced availability (depends on every provider).</li>
+    <li>Risk of N+1 fan-out; limited filtering/sorting.</li>
+  </ul></div>
+</div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce product page</span>
+<h3>Compose catalog + pricing + inventory + ratings</h3>
+<p>The composer calls four services in parallel and merges them into one <code>ProductCard</code>. Inventory is treated
+as optional: on a timeout the page shows the product with <code>stockLevel: null</code> rather than failing — partial
+results beat a blank page.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li>The <strong>API gateway</strong> commonly performs composition ("gateway aggregation"); Microsoft's Azure
+  Architecture Center documents it as a named pattern.</li>
+  <li><strong>GraphQL</strong> (Apollo, Netflix DGS) is essentially typed API composition — the client asks for a shape and
+  the server fans out to resolvers.</li>
+  <li><strong>Netflix</strong>'s API layer historically fanned out to dozens of services to build a single device payload.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Sequential fan-out</strong> — calling providers one after another multiplies latency; parallelise.</li>
+<li><strong>N+1 composition</strong> — composing a list by calling a detail service per item; batch instead.</li>
+<li><strong>Big in-memory joins</strong> — pulling huge result sets to join in the composer; that's a sign you need <a href="ref:cqrs">CQRS</a>.</li>
+<li><strong>Stateful composer</strong> — persisting joined results turns it into a shadow database.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>API composition answers cross-service queries by <strong>invoking providers and joining in memory</strong>.</li>
+<li>Call providers <strong>in parallel</strong>, handle <strong>partial failure</strong>, stay <strong>stateless</strong>.</li>
+<li>It's the simplest option — but availability and join cost limit it.</li>
+<li>When it doesn't scale, switch to <a href="ref:cqrs">CQRS</a> read models; the <a href="ref:api-gateway">gateway</a> often hosts the composer.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>The "order history" screen must filter and sort thousands of a customer's past orders by fields spread across four
+services. Why is API composition a poor fit here, and what should you use?</p>
+<details><summary>Show answer</summary>
+<p>Filtering/sorting across services would force the composer to pull large datasets from each provider and join/sort them
+in memory on every request — slow, fragile, and dependent on all four services being up. This is the textbook trigger for
+<a href="ref:cqrs">CQRS</a>: maintain a denormalised, query-optimised <em>order-history read model</em> kept current by
+events, so the query hits one indexed store.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:cqrs">CQRS</a> · <a href="ref:api-gateway">API gateway</a> ·
+<a href="ref:bff">Backends for Frontends</a> · <a href="ref:rpi">Remote procedure invocation</a></p>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Use Domain-Driven Design subdomains and bounded contexts to find service boundaries.">
+  <title>Decompose by Subdomain (DDD) · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html" class="active"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Decompose by Subdomain (DDD)</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/decomposition.html">Decomposition Strategies</a> <a class="badge badge--ch" href="../by-chapter/ch02.html">Chapter 2</a></div>
+      <h1>Decompose by Subdomain (DDD)</h1>
+      <p class="page-sub">Use Domain-Driven Design subdomains and bounded contexts to find service boundaries.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-decompose-by-subdomain"><div class="tags"><span class="badge badge--pat">Decompose by subdomain</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Use Domain-Driven Design to break the problem into
+  <em>subdomains</em>, each with its own <em>bounded context</em> and consistent model — then make each bounded context a
+  service. The boundary between two services is the place where the language of the business changes meaning.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>The domain is <strong>rich and complex</strong> (the same word means different things to different teams).</li>
+      <li>You're already practising (or want) <strong>Domain-Driven Design</strong>.</li>
+      <li>You need to decide <strong>build vs buy</strong> per area (core vs generic).</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You treat a single entity/table as a "bounded context".</li>
+      <li>You try to design the <strong>whole model up front</strong> instead of discovering it.</li>
+      <li>You let a <strong>shared kernel</strong> grow until contexts re-couple.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: one "Order" means five different things</h2>
+<p>In FTGO, the word <em>Order</em> means something different to Order-taking, to the Kitchen, to Delivery and to
+Accounting. A single, shared "Order" class trying to satisfy everyone becomes a fuzzy, over-coupled mess. DDD gives us a
+vocabulary for turning these linguistic seams into service boundaries.</p>
+
+<h2>The pattern: subdomains &amp; bounded contexts</h2>
+<p>Domain-Driven Design decomposes the <strong>domain</strong> (the whole problem space) into <strong>subdomains</strong>.
+Each subdomain has a <strong>bounded context</strong> — a boundary within which a single model and a single
+<em>ubiquitous language</em> are consistent. <strong>One bounded context = one service</strong> is the default.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — bounded contexts become services; "Order" differs in each</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Domain</span><span class="node-name">Food delivery</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Order Taking</span><span class="node-sub">Order = line items &amp; total</span></div>
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Kitchen</span><span class="node-sub">Order = a Ticket to cook</span></div>
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Delivery</span><span class="node-sub">Order = a pickup &amp; drop-off</span></div>
+      <div class="node node--service"><span class="node-kind">Bounded context</span><span class="node-name">Accounting</span><span class="node-sub">Order = a charge</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<h2>Classify subdomains: core, supporting, generic</h2>
+<p>Not all subdomains deserve equal investment. DDD classifies them — and that drives build-vs-buy and where your best
+engineers go:</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Type</th><th>What it is</th><th>Strategy</th><th>FTGO example</th></tr></thead>
+<tbody>
+<tr><td><strong>Core</strong></td><td>Your competitive differentiator</td><td>Invest heavily, build in-house, best people</td><td>Delivery scheduling / routing</td></tr>
+<tr><td><strong>Supporting</strong></td><td>Necessary but not differentiating</td><td>Build simply, or outsource</td><td>Restaurant menu management</td></tr>
+<tr><td><strong>Generic</strong></td><td>A solved commodity</td><td>Buy / use OSS, wrap with an ACL</td><td>Payments (Stripe), identity, email</td></tr>
+</tbody>
+</table></div>
+
+<h2>How it works: context mapping</h2>
+<p>Once you have bounded contexts, you classify the <em>relationships</em> between them (a <strong>context map</strong>).
+The relationship dictates the integration style and which team depends on which.</p>
+<figure class="diagram">
+<figcaption>Context map — relationships between bounded contexts</figcaption>
+<pre class="mermaid">
+flowchart LR
+  OT[Order Taking]
+  KI[Kitchen]
+  DL[Delivery]
+  PAY[Payments<br/>generic, external]
+  OT -- "publishes events" --> KI
+  OT -- "publishes events" --> DL
+  OT -- "Anti-Corruption Layer" --> PAY
+  classDef ext fill:#1f2937,stroke:#94a3b8,color:#fff;
+  class PAY ext;
+</pre>
+</figure>
+<p>Relationships include <em>Partnership</em>, <em>Customer–Supplier</em>, <em>Conformist</em>, <em>Shared Kernel</em>,
+<em>Open Host Service / Published Language</em>, and the <a href="anti-corruption-layer.html">Anti-Corruption Layer</a>
+(used whenever you integrate a legacy or generic system without letting its model leak in).</p>
+
+<h2>Worked use cases</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Banking</span>
+<h3>Loan origination — same word, two models</h3>
+<p>Core: <em>Credit Decisioning</em> (proprietary risk models) with a rich domain model (<code>CreditApplication</code>
+aggregate, <code>RiskScore</code> value object). Generic: <em>Identity Verification</em> — a thin
+<a href="anti-corruption-layer.html">ACL</a> over a vendor (e.g. Jumio). This classification tells you to staff Credit
+Decisioning with senior engineers and merely <em>integrate</em> identity.</p>
+</div>
+<div class="usecase">
+<span class="uc-tag">Use case · Ride-hailing</span>
+<h3>"Driver" is two different things</h3>
+<p>In the <em>Matching</em> context a Driver is a lightweight struct (location + availability). In the <em>Driver
+Management</em> context a Driver is a rich aggregate (profile, documents, earnings, compliance). Same word, two models in
+two bounded contexts, connected via a Customer–Supplier relationship with an ACL — exactly the seam DDD predicts.</p>
+</div>
+
+<h2>In the wild — tooling &amp; practice</h2>
+<ul>
+  <li><strong>Event Storming</strong> &amp; <strong>Domain Storytelling</strong> — workshops to discover subdomains,
+  events and aggregates collaboratively.</li>
+  <li><strong>Context Mapper</strong> — an open-source DSL for modelling bounded contexts and their relationships
+  (generates diagrams &amp; service stubs).</li>
+  <li><strong>Microsoft eShopOnContainers</strong> — a canonical reference app where each service maps to a DDD bounded
+  context (Catalog, Ordering, Basket, Identity, Payment).</li>
+  <li><strong>Spring Modulith</strong> (2023+) — enforces bounded-context boundaries inside a modular monolith and can
+  generate context maps from code; a great stepping stone before extracting services.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Bounded context = one table.</strong> A real context encapsulates a business <em>process</em>, not a data structure.</li>
+<li><strong>Anemic model.</strong> Using DDD vocabulary but writing transaction-script logic — overhead without benefit.</li>
+<li><strong>Shared-kernel sprawl.</strong> Too many shared types re-couple the contexts you split.</li>
+<li><strong>Big design up front.</strong> Discover the model iteratively from working code + events, don't pre-design it.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Decompose the domain into <strong>subdomains</strong>; each <strong>bounded context</strong> → one service.</li>
+<li>The service boundary is where the <strong>ubiquitous language changes meaning</strong>.</li>
+<li>Classify subdomains <strong>core / supporting / generic</strong> to direct investment and build-vs-buy.</li>
+<li>Make context relationships explicit; protect contexts with an <a href="anti-corruption-layer.html">anti-corruption layer</a>.</li>
+<li>This usually <strong>agrees with</strong> <a href="decompose-by-business-capability.html">decompose by business capability</a> — use both.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Your "Customer" means different things to Sales (a lead with a pipeline stage) and to Support (an account with
+tickets). What does DDD say to do?</p>
+<details><summary>Show answer</summary>
+<p>That linguistic divergence <em>is</em> the bounded-context boundary. Don't build one shared Customer model — create
+two contexts (Sales and Support), each with its own Customer model and language, and integrate them via events or an API
+(with an ACL if one must conform to the other). Forcing a single model is what creates the fuzzy, over-coupled mess.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="decompose-by-business-capability.html">Decompose by business capability</a> ·
+<a href="business-logic.html">Domain model &amp; aggregate</a> · <a href="anti-corruption-layer.html">Anti-corruption layer</a> ·
+<a href="domain-event.html">Domain event</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="decompose-by-business-capability.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Decompose by Business Capability</span></a>
+      <a class="next" href="rpi.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

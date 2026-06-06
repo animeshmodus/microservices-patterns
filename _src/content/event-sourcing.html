@@ -1,0 +1,155 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Instead of storing the <em>current state</em> of an
+  aggregate, event sourcing stores the full, append-only sequence of <em>events</em> that happened to it; current state is
+  reconstructed by replaying those events — so you keep a perfect history and get reliable event publishing for free.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>A complete, trustworthy <strong>audit trail / history</strong> is valuable or required.</li>
+      <li>You already publish <a href="ref:domain-event">domain events</a> and want them to be the source of truth.</li>
+      <li>You need temporal queries ("what did this look like last Tuesday?").</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Avoid when</h4>
+    <ul>
+      <li>The domain is simple CRUD with no real history value.</li>
+      <li>The team isn't ready for <strong>eventual consistency</strong> and schema evolution.</li>
+      <li>You need ad-hoc queries on current state without building <a href="ref:cqrs">read models</a>.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: traditional persistence throws away the "why"</h2>
+<p>Storing only current state (an <code>orders</code> row that gets <code>UPDATE</code>d) loses the history of how it got
+there, makes auditing an afterthought, suffers object-relational impedance mismatch, and — crucially — leaves the
+<a href="ref:transactional-messaging">dual-write problem</a>: how do you update state <em>and</em> reliably publish the
+event? Event sourcing answers all of these at once.</p>
+
+<h2>The pattern: events are the source of truth</h2>
+<p>Every change to an aggregate is captured as an event and <strong>appended</strong> to an <strong>event store</strong>.
+The aggregate's current state is a left-fold (reduction) over its event stream. To handle a command you load the events,
+rebuild state, validate, and append the new event(s).</p>
+
+<figure class="arch">
+  <figcaption>Architecture — command → events → event store → (replay | publish)</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="arch-flow">
+      <div class="node node--client"><span class="node-kind">Command</span><span class="node-name">PlaceOrder</span></div>
+      <div class="flow-arrow"></div>
+      <div class="node node--service"><span class="node-kind">Aggregate</span><span class="node-name">Order</span><span class="node-sub">state = fold(events)</span></div>
+      <div class="flow-arrow"><span>append</span></div>
+      <div class="node node--db"><span class="node-kind">Event store</span><span class="node-name">Order events</span><span class="node-sub">append-only log</span></div>
+    </div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--ext"><span class="node-kind">Rebuild</span><span class="node-name">Replay</span></div>
+      <div class="flow-arrow is-bi"></div>
+      <div class="node node--broker"><span class="node-kind">Publish</span><span class="node-name">to subscribers / read models</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>State is the fold of the event stream</figcaption>
+<pre class="mermaid">
+flowchart LR
+  E1[OrderCreated<br/>v1] --> E2[OrderApproved<br/>v2] --> E3[OrderShipped<br/>v3] --> S{{Current state:<br/>SHIPPED}}
+  classDef ev fill:#0c1322,stroke:#38bdf8,color:#e7ecf5;
+  class E1,E2,E3 ev;
+</pre>
+</figure>
+
+<h2>How it works — the moving parts</h2>
+<ul>
+  <li><strong>Append-only events</strong> per aggregate, identified by an aggregate id, ordered by a version number.</li>
+  <li><strong>Optimistic locking</strong> — the version number detects concurrent updates: appending checks the expected
+  version, retrying on conflict.</li>
+  <li><strong>Snapshots</strong> — for long streams, periodically store a snapshot of state so you replay only events
+  since the last snapshot (performance).</li>
+  <li><strong>Event evolution / upcasting</strong> — events live forever, so plan for schema change: version events and
+  <em>upcast</em> old ones to the current shape on read.</li>
+  <li><strong>Idempotent processing</strong> — consumers dedupe by event id (at-least-once delivery).</li>
+  <li><strong>Reliable publishing for free</strong> — the event store <em>is</em> the outbox; publishing is just tailing
+  the log.</li>
+</ul>
+
+<div class="callout callout--note"><div class="ic">&#128161;</div><div class="body">
+<div class="ttl">Event sourcing ⟷ CQRS are best friends</div>
+<p>An event store is great for writes and replay but terrible for ad-hoc queries ("all orders over ₹500 today"). So event
+sourcing is almost always paired with <a href="ref:cqrs">CQRS</a>: project the event stream into query-optimised
+<em>read models</em>. Note the converse isn't required — you can do CQRS without event sourcing.</p>
+</div></div>
+
+<h2>Trade-offs</h2>
+<div class="tradeoffs">
+  <div class="pros"><h4>Benefits</h4><ul>
+    <li>Perfect audit log &amp; time-travel; nothing is lost.</li>
+    <li>Reliable event publishing is inherent (no dual write).</li>
+    <li>Decouples write model from many read models.</li>
+    <li>Enables debugging by replaying exactly what happened.</li>
+  </ul></div>
+  <div class="cons"><h4>Drawbacks</h4><ul>
+    <li>A different, less familiar programming model.</li>
+    <li>Querying needs <a href="ref:cqrs">CQRS</a> read models.</li>
+    <li>Event schema evolution must be planned (upcasting).</li>
+    <li>Eventual consistency between write and read sides.</li>
+  </ul></div>
+</div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Banking ledger</span>
+<h3>An account that is its own audit trail</h3>
+<p>An account is the sequence <code>Opened → Deposited(100) → Withdrew(30) → Deposited(50)</code>; the balance (120) is
+the fold. Regulators get an immutable history by construction; disputes are resolved by replay; and a new "monthly
+statement" read model is built simply by replaying events — no migration. This is why finance, trading and logistics are
+classic event-sourcing domains.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Kurrent</strong> (formerly <strong>EventStoreDB</strong>, rebranded 2024) — a purpose-built event store with
+  native projections.</li>
+  <li><strong>Axon Framework</strong> (JVM, v5.x) + Axon Server — a full CQRS/ES platform; widely used in European
+  fintech.</li>
+  <li><strong>Marten</strong> — event store + projections on top of PostgreSQL for .NET.</li>
+  <li><strong>Apache Kafka</strong> — often used as the event log/backbone, with stream processors building read models.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>No schema-evolution plan</strong> — months in, you can't change an event without breaking replay. Version &amp; upcast from day one.</li>
+<li><strong>Querying the event store directly</strong> for current state at scale — build <a href="ref:cqrs">read models</a>.</li>
+<li><strong>Huge streams without snapshots</strong> — replay gets slow; snapshot periodically.</li>
+<li><strong>Event-sourcing everything</strong> — apply it to aggregates where history/audit truly matter, not every CRUD entity.</li>
+<li><strong>Leaking commands into events</strong> — store what <em>happened</em>, not what to <em>do</em>.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Persist <strong>events, not state</strong>; rebuild state by <strong>replaying</strong> the append-only log.</li>
+<li>Use <strong>optimistic locking</strong> (versions), <strong>snapshots</strong> for performance, and <strong>upcasting</strong> for evolution.</li>
+<li>You get a perfect <strong>audit trail</strong> and <strong>reliable event publishing</strong> for free.</li>
+<li>Pair with <a href="ref:cqrs">CQRS</a> for queries; the event store is the natural <a href="ref:transactional-messaging">outbox</a>.</li>
+<li>Tools: <strong>Kurrent/EventStoreDB</strong>, <strong>Axon</strong>, <strong>Marten</strong>, <strong>Kafka</strong>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why does event sourcing eliminate the dual-write problem that plagues ordinary persistence?</p>
+<details><summary>Show answer</summary>
+<p>Because there's only <em>one</em> write: appending the event to the event store. State and "the event" are the same
+thing, committed in a single append. Publishing is then just tailing the durable log — there's no separate "update DB,
+then publish to broker" pair of writes to fall out of sync. The event store effectively <em>is</em> the
+<a href="ref:transactional-messaging">transactional outbox</a>.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:cqrs">CQRS</a> · <a href="ref:domain-event">Domain event</a> ·
+<a href="ref:business-logic">Domain model &amp; aggregate</a> · <a href="ref:saga">Saga</a> ·
+<a href="ref:transactional-messaging">Transactional messaging</a></p>

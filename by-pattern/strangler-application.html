@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Migrate a monolith to microservices incrementally by routing slices of traffic to new services.">
+  <title>Strangler Application · Microservices Patterns</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">{ }</span>
+    <span class="brand-text">Microservices&nbsp;Patterns</span>
+  </a>
+  <nav class="view-tabs" aria-label="Choose organization">
+    <a href="../by-pattern/index.html" class="active"><span class="vt-label">By Pattern</span></a>
+      <a href="../by-category/index.html"><span class="vt-label">By Category</span></a>
+      <a href="../by-chapter/index.html"><span class="vt-label">By Chapter</span></a>
+  </nav>
+  <button class="icon-btn theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">&#9788;</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="Course navigation">
+    <div class="sidebar-head">All Patterns</div>
+    <nav class="nav">
+      <div class="nav-group">Application Architecture</div>
+      <a href="monolith-vs-microservices.html"><span class="nidx">01</span><span>Monolith vs. Microservice Architecture</span></a>
+      <div class="nav-group">Decomposition Strategies</div>
+      <a href="decompose-by-business-capability.html"><span class="nidx">02</span><span>Decompose by Business Capability</span></a>
+      <a href="decompose-by-subdomain.html"><span class="nidx">03</span><span>Decompose by Subdomain (DDD)</span></a>
+      <div class="nav-group">Communication Styles</div>
+      <a href="rpi.html"><span class="nidx">04</span><span>Remote Procedure Invocation (REST &amp; gRPC)</span></a>
+      <a href="messaging.html"><span class="nidx">05</span><span>Asynchronous Messaging</span></a>
+      <div class="nav-group">Reliable Communication</div>
+      <a href="circuit-breaker.html"><span class="nidx">06</span><span>Circuit Breaker</span></a>
+      <div class="nav-group">Service Discovery</div>
+      <a href="service-discovery.html"><span class="nidx">07</span><span>Service Discovery</span></a>
+      <div class="nav-group">Transactional Messaging</div>
+      <a href="transactional-messaging.html"><span class="nidx">08</span><span>Transactional Messaging (Outbox &amp; CDC)</span></a>
+      <div class="nav-group">Data Consistency</div>
+      <a href="saga.html"><span class="nidx">09</span><span>Saga</span></a>
+      <div class="nav-group">Business Logic Design</div>
+      <a href="business-logic.html"><span class="nidx">10</span><span>Business Logic: Domain Model &amp; Aggregate</span></a>
+      <a href="domain-event.html"><span class="nidx">11</span><span>Domain Event</span></a>
+      <a href="event-sourcing.html"><span class="nidx">12</span><span>Event Sourcing</span></a>
+      <div class="nav-group">Querying</div>
+      <a href="api-composition.html"><span class="nidx">13</span><span>API Composition</span></a>
+      <a href="cqrs.html"><span class="nidx">14</span><span>CQRS</span></a>
+      <div class="nav-group">External API</div>
+      <a href="api-gateway.html"><span class="nidx">15</span><span>API Gateway</span></a>
+      <a href="bff.html"><span class="nidx">16</span><span>Backends for Frontends (BFF)</span></a>
+      <div class="nav-group">Testing</div>
+      <a href="contract-testing.html"><span class="nidx">17</span><span>Contract &amp; Component Testing</span></a>
+      <div class="nav-group">Security</div>
+      <a href="security-access-token.html"><span class="nidx">18</span><span>Microservice Security &amp; Access Token</span></a>
+      <div class="nav-group">Cross-Cutting Concerns</div>
+      <a href="externalized-configuration.html"><span class="nidx">19</span><span>Externalized Configuration</span></a>
+      <a href="microservice-chassis.html"><span class="nidx">21</span><span>Microservice Chassis</span></a>
+      <div class="nav-group">Observability</div>
+      <a href="observability.html"><span class="nidx">20</span><span>Observability</span></a>
+      <div class="nav-group">Deployment</div>
+      <a href="service-mesh-sidecar.html"><span class="nidx">22</span><span>Service Mesh &amp; Sidecar</span></a>
+      <a href="deployment-patterns.html"><span class="nidx">23</span><span>Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <div class="nav-group">Refactoring to Microservices</div>
+      <a href="strangler-application.html" class="active"><span class="nidx">24</span><span>Strangler Application</span></a>
+      <a href="anti-corruption-layer.html"><span class="nidx">25</span><span>Anti-Corruption Layer</span></a>
+    </nav>
+  </aside>
+
+  <main class="content" id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span class="sep">/</span><a href="index.html">By Pattern</a><span class="sep">/</span>Strangler Application</nav>
+    <header class="page-head">
+      <div class="page-meta"><span class="badge badge--diff badge--Core">Core</span> <a class="badge" href="../by-category/refactoring.html">Refactoring to Microservices</a> <a class="badge badge--ch" href="../by-chapter/ch13.html">Chapter 13</a></div>
+      <h1>Strangler Application</h1>
+      <p class="page-sub">Migrate a monolith to microservices incrementally by routing slices of traffic to new services.</p>
+    </header>
+
+    <article class="prose">
+      <section class="unit" id="sec-strangler-application"><div class="tags"><span class="badge badge--pat">Strangler application</span></div>
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> Migrate a monolith to microservices incrementally — put a
+  routing facade in front of it and, capability by capability, build new services and divert their traffic to them, so the
+  monolith gradually shrinks until it's "strangled", with no risky big-bang rewrite.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>You must modernise a <strong>large, running</strong> system you can't stop.</li>
+      <li>A <strong>big-bang rewrite</strong> is too risky/expensive.</li>
+      <li>You want to deliver value &amp; reduce risk <strong>continuously</strong>.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You extract services but keep a <strong>shared database</strong> (distributed monolith).</li>
+      <li>The migration <strong>never finishes</strong> — half-extracted zombies pile up.</li>
+      <li>You haven't planned <strong>data consistency</strong> during the transition.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: you can't stop the world to rewrite</h2>
+<p>The monolith still runs the business. A "stop everything and rewrite from scratch" project is the classic way to fail —
+it's high-risk, delivers no value for ages, and the requirements move under you. You need to evolve the system while it
+keeps serving customers.</p>
+
+<h2>The pattern: the strangler fig</h2>
+<p>Named by Martin Fowler after a vine that grows around a tree until it replaces it. Put a <strong>routing facade</strong>
+in front of the monolith. New functionality — and extracted capabilities — become services behind the facade; you route
+the relevant requests to them. Over time more routes point at services and fewer at the monolith, until the monolith can
+be retired.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — a facade routes each request to the monolith or a new service</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--client" style="align-self:center"><span class="node-kind">Clients</span><span class="node-name">Web / Mobile</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="node node--gateway" style="align-self:center"><span class="node-kind">Routing facade</span><span class="node-name">Strangler Facade</span><span class="node-sub">gateway / proxy / ALB</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--ext"><span class="node-kind">Legacy</span><span class="node-name">Monolith</span><span class="node-sub">shrinking</span></div>
+      <div class="node node--service"><span class="node-kind">New</span><span class="node-name">Catalog Service</span></div>
+      <div class="node node--service"><span class="node-kind">New</span><span class="node-name">Delivery Service</span></div>
+    </div>
+  </div></div>
+</figure>
+
+<figure class="diagram">
+<figcaption>Flow — traffic shifts from monolith to services over time</figcaption>
+<pre class="mermaid">
+flowchart LR
+  C[Clients] --> F[Strangler Facade]
+  F -- "not yet migrated" --> M[Monolith]
+  F -- "/catalog/*" --> S1[Catalog Service]
+  F -- "/delivery/*" --> S2[Delivery Service]
+  classDef new fill:#064e3b,stroke:#34d399,color:#fff;
+  classDef old fill:#3f2937,stroke:#fb7185,color:#fff;
+  class S1,S2 new;
+  class M old;
+</pre>
+</figure>
+
+<h2>How it works — three complementary strategies</h2>
+<ol>
+  <li><strong>Implement new features as services</strong> — stop adding to the monolith; new capabilities go straight into
+  new services behind the facade.</li>
+  <li><strong>Separate the presentation tier from the backend</strong> — split the UI from business logic so each can
+  evolve independently.</li>
+  <li><strong>Extract business capabilities into services</strong> — peel off a <a href="decompose-by-business-capability.html">capability</a>
+  at a time, including its data, and reroute.</li>
+</ol>
+<p>The hard part is the <strong>integration glue</strong> and <strong>data consistency</strong> during the overlap: the
+service and monolith often need each other's data. Techniques include replicating data via events/CDC, dual-writes
+(carefully), and protecting the new service from the legacy schema with an <a href="anti-corruption-layer.html">anti-corruption layer</a>.</p>
+
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Extract leaf, read-heavy capabilities first</div>
+<p>Start with low-coupling, read-heavy slices (e.g. product catalog) — lower risk, quick wins. Save tightly-coupled core
+domains for when the team has muscle memory. Run new and old in parallel (shadow/dark launch) before flipping traffic.</p>
+</div></div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · E-commerce</span>
+<h3>Catalog first, checkout last</h3>
+<p>The facade routes <code>/api/products/*</code> to a new Catalog Service (its own Postgres), seeded via CDC from the
+monolith. Checkout stays in the monolith for now. After a 3-month parallel run with monitoring, the monolith's catalog
+tables are retired. The pattern repeats capability by capability until the monolith is gone.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Martin Fowler</strong> coined "Strangler Fig" (2004); it remains the dominant real-world migration strategy.</li>
+  <li><strong>Shopify, Airbnb, Uber</strong> all ran multi-year strangler programmes (often with a routing/proxy facade and
+  feature flags).</li>
+  <li>Facade tech: <a href="api-gateway.html">API gateway</a>/Kong/NGINX, AWS ALB path routing, Envoy/Istio traffic
+  splitting; <strong>feature flags</strong> (LaunchDarkly/Unleash) to flip implementations at runtime.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Shared database left intact</strong> — extracting code but not data yields a <a href="monolith-vs-microservices.html">distributed monolith</a>.</li>
+<li><strong>Never finishing</strong> — zombie half-migrated services accumulate; track and complete each extraction.</li>
+<li><strong>Dual-write bugs</strong> — writing to old and new stores during overlap; use events/CDC and idempotency.</li>
+<li><strong>God router</strong> — routing rules accumulating business logic in the facade.</li>
+<li><strong>No tests on the monolith</strong> before extraction — regressions slip through.</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>Migrate <strong>incrementally</strong> behind a <strong>routing facade</strong> — never big-bang.</li>
+<li>Three strategies: new features as services, split presentation/backend, extract capabilities.</li>
+<li>The overlap demands a <strong>data-consistency plan</strong> (events/CDC) and an <a href="anti-corruption-layer.html">anti-corruption layer</a>.</li>
+<li>Extract <strong>low-coupling, read-heavy</strong> capabilities first; define "done" so you actually finish.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>A team extracts five services from the monolith but they all still read and write the monolith's single shared
+database. Have they escaped the monolith?</p>
+<details><summary>Show answer</summary>
+<p>No — they've built a <strong>distributed monolith</strong>. The shared database keeps everything coupled: schema changes
+ripple across all "services", they can't be deployed truly independently, and they now carry distributed-systems
+complexity with none of the autonomy benefit. A real strangler extraction moves the <em>data</em> too (each service owns
+its store), integrating via events/APIs — that's the harder, essential half of the job.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="monolith-vs-microservices.html">Monolith vs microservices</a> · <a href="anti-corruption-layer.html">Anti-corruption layer</a> ·
+<a href="api-gateway.html">API gateway</a> · <a href="decompose-by-business-capability.html">Decompose by business capability</a></p>
+</section>
+    </article>
+
+    <nav class="prevnext" aria-label="Pagination">
+      <a class="prev" href="deployment-patterns.html"><span class="pn-dir">&larr; Previous</span><span class="pn-ttl">Deployment: Containers, Kubernetes &amp; Serverless</span></a>
+      <a class="next" href="anti-corruption-layer.html"><span class="pn-dir">Next &rarr;</span><span class="pn-ttl">Anti-Corruption Layer</span></a>
+    </nav>
+
+    <footer class="page-foot">
+      <p>Course material distilled from <em>Microservices Patterns</em> by Chris Richardson (Manning, 2019),
+      enriched with current tooling &amp; real-world practice. Built as a self-study guide for IT professionals.</p>
+    </footer>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="On this page">
+    <div class="toc-head">On this page</div>
+    <nav class="toc-nav"></nav>
+  </aside>
+</div>
+
+<div class="nav-scrim" hidden></div>
+
+<script src="../assets/course.js" defer></script>
+</body>
+</html>

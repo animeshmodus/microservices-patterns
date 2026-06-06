@@ -1,0 +1,141 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> A domain event is a record that "something significant
+  happened" to an aggregate (<code>OrderPlaced</code>, <code>TicketAccepted</code>); the aggregate publishes it so other
+  services and read models can react — turning a tangle of synchronous calls into a clean event-driven flow.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>Other services/views must <strong>react to state changes</strong>.</li>
+      <li>You're building <a href="ref:saga">sagas</a>, <a href="ref:cqrs">CQRS</a> read models, or notifications.</li>
+      <li>You want to <strong>decouple</strong> the producer from unknown future consumers.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Be careful when</h4>
+    <ul>
+      <li>You publish CRUD noise ("row updated") instead of <strong>business-meaningful</strong> events.</li>
+      <li>You publish without the <a href="ref:transactional-messaging">outbox</a> (events get lost).</li>
+      <li>Consumers assume exactly-once / strict ordering without designing for it.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: how does the rest of the system find out?</h2>
+<p>When an <code>Order</code> is placed, the kitchen needs a ticket, accounting needs to bill, the customer needs a
+notification, and an analytics read model needs updating. If Order Service calls each of them synchronously, you rebuild
+the coupling and availability problems microservices were meant to solve. There's a better way: <em>announce the fact and
+let interested parties react.</em></p>
+
+<h2>The pattern: aggregates publish events</h2>
+<p>A <strong>domain event</strong> is an immutable record of something that happened in the domain, named in the past
+tense. When an aggregate changes state, it emits the corresponding event. The event carries enough data
+(<em>enrichment</em>) for typical consumers to act without calling back.</p>
+
+<figure class="arch">
+  <figcaption>Architecture — one event, many independent reactions</figcaption>
+  <div class="arch-canvas"><div class="arch-stack">
+    <div class="node node--service" style="align-self:center"><span class="node-kind">Aggregate</span><span class="node-name">Order → OrderPlaced</span></div>
+    <div class="flow-arrow is-down"><span>publish (via outbox)</span></div>
+    <div class="node node--broker" style="align-self:center"><span class="node-kind">Broker</span><span class="node-name">order events topic</span></div>
+    <div class="flow-arrow is-down"></div>
+    <div class="arch-flow">
+      <div class="node node--service"><span class="node-name">Kitchen</span><span class="node-sub">create ticket</span></div>
+      <div class="node node--service"><span class="node-name">Notification</span><span class="node-sub">email/SMS</span></div>
+      <div class="node node--service"><span class="node-name">Analytics</span><span class="node-sub">update read model</span></div>
+    </div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--service">Service</span><span class="chip chip--broker">Broker</span></div>
+  </div>
+</figure>
+
+<h2>How it works</h2>
+<ol>
+  <li><strong>Identify events</strong> — collaboratively, often via <em>Event Storming</em> (orange sticky notes = domain
+  events). Name them in the business's ubiquitous language: <code>OrderPlaced</code>, not <code>OrderTableUpdated</code>.</li>
+  <li><strong>Generate them</strong> — the aggregate produces events as part of handling a command; the service collects
+  and persists them.</li>
+  <li><strong>Publish reliably</strong> — write the event to the <a href="ref:transactional-messaging">transactional
+  outbox</a> in the same transaction as the state change, then relay to the broker.</li>
+  <li><strong>Consume them</strong> — subscribers react idempotently. New consumers can be added later with zero changes
+  to the producer.</li>
+</ol>
+<figure class="diagram">
+<figcaption>Sequence — emit, persist atomically, then fan out</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant H as Command Handler
+  participant A as Order Aggregate
+  participant DB as DB (+ outbox)
+  participant K as Broker
+  participant S as Subscribers
+  H->>A: place(order)
+  A-->>H: state=PLACED + [OrderPlaced]
+  H->>DB: save order + OrderPlaced (one txn)
+  DB-->>K: relay publishes OrderPlaced
+  K->>S: deliver to Kitchen, Notification, Analytics
+</pre>
+</figure>
+
+<div class="callout callout--tip"><div class="ic">&#129504;</div><div class="body">
+<div class="ttl">Event enrichment — a balance</div>
+<p>A thin event (<code>{orderId}</code>) forces consumers to call back for details (chatty, coupled). A fat, enriched
+event (<code>{orderId, total, lineItems, consumerId}</code>) lets most consumers act alone — but couples the event schema
+to consumer needs. Enrich for the common cases; let rare consumers query.</p>
+</div></div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Adding a feature without touching the producer</span>
+<h3>"Loyalty points on delivery"</h3>
+<p>Marketing wants to award points when an order is delivered. Because Delivery Service already publishes
+<code>OrderDelivered</code>, the new Loyalty Service just subscribes to that event. Order/Delivery code is unchanged — the
+event stream is an extension point. That's the open/closed principle at architecture scale.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li>Domain events are the backbone of <strong>event-driven architecture</strong> and the input to <a href="ref:cqrs">CQRS</a>
+  read models and <a href="ref:saga">choreographed sagas</a>.</li>
+  <li><strong>Apache Kafka</strong>, <strong>AWS EventBridge</strong>/<strong>SNS</strong>, and <strong>Google Pub/Sub</strong>
+  are common event backbones; a <strong>schema registry</strong> (Avro/Protobuf/JSON Schema) governs event contracts.</li>
+  <li><strong>Event Storming</strong> is the standard discovery technique; <strong>CloudEvents</strong> is a CNCF spec for
+  a common event envelope.</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>CRUD events</strong> (<code>RowUpdated</code>) instead of business events — leaks the producer's schema and
+means nothing to consumers.</li>
+<li><strong>Publishing outside the outbox</strong> — the dual-write bug; events silently lost on crash.</li>
+<li><strong>Unversioned event schemas</strong> — a breaking change stops every consumer; evolve additively.</li>
+<li><strong>Hidden command-in-event</strong> — events should state facts, not boss consumers around ("send the email").</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>A domain event records a <strong>business fact</strong> (past tense) and decouples producer from consumers.</li>
+<li>Discover events with <strong>Event Storming</strong>; name them in the ubiquitous language.</li>
+<li>Publish them <strong>reliably</strong> via the <a href="ref:transactional-messaging">transactional outbox</a>.</li>
+<li><strong>Enrich</strong> events enough for common consumers; version schemas additively.</li>
+<li>Events feed <a href="ref:saga">sagas</a>, <a href="ref:cqrs">CQRS</a> views and <a href="ref:event-sourcing">event sourcing</a>.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Why is <code>OrderPlaced</code> a better event than <code>OrderTableRowInserted</code>?</p>
+<details><summary>Show answer</summary>
+<p><code>OrderPlaced</code> is a <em>business fact</em> in the ubiquitous language — stable, meaningful, and decoupled from
+how Order Service stores data. <code>OrderTableRowInserted</code> leaks an implementation detail (a table name): consumers
+now depend on the producer's schema, the event breaks if storage changes, and it carries no business intent. Events should
+describe domain happenings, not database mechanics.</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:business-logic">Domain model &amp; aggregate</a> · <a href="ref:messaging">Asynchronous messaging</a> ·
+<a href="ref:transactional-messaging">Transactional messaging</a> · <a href="ref:event-sourcing">Event sourcing</a> ·
+<a href="ref:cqrs">CQRS</a> · <a href="ref:saga">Saga</a></p>

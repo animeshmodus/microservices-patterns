@@ -1,0 +1,140 @@
+<div class="glance">
+  <div class="g-full g-tldr"><strong>In one sentence:</strong> With Remote Procedure Invocation a service calls another
+  using a <em>synchronous request/response</em> protocol — usually REST over HTTP for public/simple APIs, or gRPC over
+  HTTP/2 for fast internal calls — and waits for the reply.</div>
+  <div class="g-when">
+    <h4>Use when</h4>
+    <ul>
+      <li>The caller genuinely needs the <strong>reply now</strong> to continue.</li>
+      <li>The interaction is a simple <strong>query or command</strong> with a clear response.</li>
+      <li>You want familiar, debuggable, request/response semantics.</li>
+    </ul>
+  </div>
+  <div class="g-avoid">
+    <h4>Avoid when</h4>
+    <ul>
+      <li>You're chaining many synchronous calls (availability collapses).</li>
+      <li>The work is long-running or fire-and-forget — prefer <a href="ref:messaging">messaging</a>.</li>
+      <li>You need temporal decoupling between sender and receiver.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The problem: services need to talk</h2>
+<p>The moment you split a monolith, in-process method calls become network calls. The simplest mental model is the
+remote procedure call: the client sends a request and blocks until the provider responds — just like calling a function,
+except now there's a network, latency and the possibility of <strong>partial failure</strong> in between.</p>
+
+<h2>The pattern: synchronous request/response</h2>
+<figure class="arch">
+  <figcaption>Architecture — synchronous RPI between services</figcaption>
+  <div class="arch-canvas"><div class="arch-flow">
+    <div class="node node--service"><span class="node-kind">Caller</span><span class="node-name">Order Service</span></div>
+    <div class="flow-arrow"><span>request</span></div>
+    <div class="node node--service"><span class="node-kind">Provider</span><span class="node-name">Kitchen Service</span></div>
+    <div class="flow-arrow is-dashed"><span>response (blocks)</span></div>
+    <div class="node node--db"><span class="node-name">Kitchen DB</span></div>
+  </div>
+  <div class="arch-legend"><span class="chip chip--service">Service</span><span class="chip chip--db">Database</span></div>
+  </div>
+</figure>
+<p>Two technologies dominate:</p>
+<ul>
+  <li><strong>REST</strong> — resources + HTTP verbs + JSON. Ubiquitous, browser-friendly, easy to debug, great for public
+  APIs. Describe it with <strong>OpenAPI</strong>.</li>
+  <li><strong>gRPC</strong> — define services/messages in <strong>Protocol Buffers</strong>, generate strongly-typed
+  clients, transport over HTTP/2 (multiplexed, streaming, binary). Excellent for high-volume internal calls.</li>
+</ul>
+
+<figure class="diagram">
+<figcaption>Sequence — a synchronous call and the partial-failure risk</figcaption>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant O as Order Service
+  participant K as Kitchen Service
+  O->>K: POST /tickets (create ticket)
+  activate K
+  K-->>O: 201 Created
+  deactivate K
+  Note over O,K: If Kitchen is slow or down,<br/>O blocks — its threads pile up<br/>(see Circuit Breaker)
+</pre>
+</figure>
+
+<h2>The big caveat: synchronous calls reduce availability</h2>
+<p>This is one of the book's most important lessons. If Order Service <em>synchronously</em> calls Consumer, Kitchen and
+Accounting to create an order, then Order is only available when <em>all three</em> are up. Availability multiplies
+downward: chain enough 99.5%-available services and the composite is far worse. Synchronous RPI <strong>couples the
+availability</strong> of caller and callee.</p>
+<div class="callout callout--warn"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Two defences</div>
+<p>(1) Protect every synchronous call with a <a href="ref:circuit-breaker">circuit breaker</a>, timeout and fallback.
+(2) Where you can, <strong>eliminate the synchronous call</strong> entirely by using <a href="ref:messaging">asynchronous
+messaging</a> — the single biggest availability win in the book.</p>
+</div></div>
+
+<h2>REST vs gRPC</h2>
+<div class="tbl-wrap"><table>
+<thead><tr><th></th><th>REST</th><th>gRPC</th></tr></thead>
+<tbody>
+<tr><td>Payload</td><td>JSON/text (human-readable)</td><td>Protobuf (compact binary)</td></tr>
+<tr><td>Transport</td><td>HTTP/1.1 typically</td><td>HTTP/2 (multiplexed, streaming)</td></tr>
+<tr><td>Contract</td><td>OpenAPI (optional)</td><td><code>.proto</code> (mandatory, codegen)</td></tr>
+<tr><td>Speed</td><td>Baseline</td><td>Often <strong>7–10× faster</strong> for internal payloads</td></tr>
+<tr><td>Best for</td><td>Public APIs, browsers</td><td>Internal service-to-service, real-time, IoT</td></tr>
+</tbody>
+</table></div>
+
+<h2>Worked use case</h2>
+<div class="usecase">
+<span class="uc-tag">Use case · Mixed protocols</span>
+<h3>REST at the edge, gRPC inside</h3>
+<p>A trading platform exposes <strong>REST</strong> to partners and browsers (via the <a href="ref:api-gateway">API
+gateway</a>), but services call each other over <strong>gRPC</strong> for the pricing hot path where every millisecond
+counts. The gateway translates protocols — the canonical "REST outside, gRPC inside" arrangement.</p>
+</div>
+
+<h2>In the wild</h2>
+<ul>
+  <li><strong>Google &amp; Uber</strong> run gRPC + Protobuf for vast internal service meshes.</li>
+  <li>Benchmarks consistently show gRPC several times faster than REST for internal traffic due to HTTP/2 + binary
+  encoding.</li>
+  <li><strong>OpenAPI</strong> (REST) and <strong>Protobuf/Buf</strong> (gRPC) anchor API contracts and enable
+  <a href="ref:contract-testing">contract testing</a> and codegen.</li>
+  <li>Service location is resolved by <a href="ref:service-discovery">service discovery</a>; resilience by
+  <a href="ref:circuit-breaker">circuit breakers</a> (often pushed into a <a href="ref:service-mesh-sidecar">service mesh</a>).</li>
+</ul>
+
+<h2>Pitfalls &amp; anti-patterns</h2>
+<div class="callout callout--pitfall"><div class="ic">&#9888;</div><div class="body">
+<div class="ttl">Watch out for these</div>
+<ul>
+<li><strong>Synchronous call chains</strong> — A→B→C→D destroys availability and adds latency. Flatten or go async.</li>
+<li><strong>No timeouts</strong> — a hung dependency exhausts the caller's threads; always bound every call.</li>
+<li><strong>Chatty fine-grained APIs</strong> — many tiny round-trips; design coarser operations.</li>
+<li><strong>Breaking API changes</strong> — evolve compatibly (additive changes, versioning).</li>
+</ul>
+</div></div>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ul>
+<li>RPI = synchronous request/response: <strong>REST</strong> for public/simple, <strong>gRPC</strong> for fast internal.</li>
+<li>Synchronous calls <strong>couple availability</strong> — minimise chains; protect with timeouts + <a href="ref:circuit-breaker">circuit breakers</a>.</li>
+<li>Prefer <a href="ref:messaging">asynchronous messaging</a> whenever a blocking reply isn't truly required.</li>
+<li>Always describe APIs with a contract (OpenAPI / Protobuf) and evolve them compatibly.</li>
+</ul>
+</div>
+
+<div class="keyq"><span class="q-tag">Check yourself</span>
+<p>Service A calls B, C and D synchronously, each 99.9% available. Roughly what's A's ceiling availability for that
+operation, and how would you raise it?</p>
+<details><summary>Show answer</summary>
+<p>≈ 0.999³ ≈ <strong>99.7%</strong> — A can't be more available than the product of its hard dependencies. Raise it by
+removing the synchronous coupling: have A react to <a href="ref:messaging">events</a> or pre-cache the data it needs, so
+it can answer even when B/C/D are momentarily down (plus circuit breakers + fallbacks for the calls that remain).</p>
+</details>
+</div>
+
+<p class="page-sub">Related: <a href="ref:messaging">Asynchronous messaging</a> · <a href="ref:circuit-breaker">Circuit breaker</a> ·
+<a href="ref:service-discovery">Service discovery</a> · <a href="ref:api-gateway">API gateway</a></p>
